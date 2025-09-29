@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electronic Interlocking Panel</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+    }
+    /* Track layout */
+    svg {
+      width: 75%;
+      height: 100vh;
+      background: black;
+    }
+    .track { stroke: white; stroke-width: 4; fill: none; }
+    .activeRoute { stroke: yellow; stroke-width: 6; }
+    .platform { fill: rgba(255,255,255,0.1); stroke: cyan; stroke-width: 2; }
+    .platform text { fill: cyan; font-size: 14px; font-weight: bold; }
+    .maint { stroke: white; stroke-dasharray: 6 4; stroke-width: 3; fill: none; }
+    .signal { stroke: white; stroke-width: 2; }
+    .train { stroke: red; stroke-width: 6; }
+
+    /* Station Master Control Panel */
+    .panel {
+      width: 25%;
+      background: #111;
+      padding: 15px;
+      border-left: 2px solid #333;
+    }
+    .panel h2 {
+      text-align: center;
+      margin: 0 0 15px;
+      color: cyan;
+    }
+    .signal-control {
+      margin-bottom: 20px;
+    }
+    .signal-control h3 {
+      margin: 0 0 5px;
+    }
+    .circle-btn {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .circle-btn.red { background: red; }
+    .circle-btn.yellow { background: yellow; }
+    .circle-btn.green { background: green; }
+  </style>
+</head>
+<body>
+  <!-- SVG Layout -->
+  <svg id="panel" viewBox="0 0 1200 600">
+    <!-- Tracks -->
+    <line id="mainLine" class="track" x1="50" y1="200" x2="1150" y2="200"/>
+    <line id="midLine" class="track" x1="300" y1="200" x2="800" y2="300"/>
+    <line id="loopLine" class="track" x1="400" y1="200" x2="950" y2="400"/>
+    
+    <!-- Maintenance Track -->
+    <line id="maint" class="maint" x1="50" y1="500" x2="1150" y2="500"/>
+
+    <!-- Platforms -->
+    <g class="platform">
+      <rect x="200" y="150" width="150" height="100"/>
+      <text x="260" y="210">P1</text>
+    </g>
+    <g class="platform">
+      <rect x="500" y="150" width="150" height="100"/>
+      <text x="560" y="210">P2</text>
+    </g>
+    <g class="platform">
+      <rect x="850" y="150" width="150" height="100"/>
+      <text x="910" y="210">P3</text>
+    </g>
+
+    <!-- Signals -->
+    <circle id="sig1" class="signal" cx="40" cy="200" r="10" fill="red"/>
+    <circle id="sig2" class="signal" cx="280" cy="200" r="10" fill="red"/>
+    <circle id="sig3" class="signal" cx="480" cy="200" r="10" fill="red"/>
+  </svg>
+
+  <!-- Station Master Control Panel -->
+  <div class="panel">
+    <h2>Station Master Controls</h2>
+
+    <div class="signal-control">
+      <h3>Signal 1</h3>
+      <div class="circle-btn red" onclick="setSignal('sig1','red')"></div>
+      <div class="circle-btn yellow" onclick="setSignal('sig1','yellow')"></div>
+      <div class="circle-btn green" onclick="setSignal('sig1','green')"></div>
+    </div>
+
+    <div class="signal-control">
+      <h3>Signal 2</h3>
+      <div class="circle-btn red" onclick="setSignal('sig2','red')"></div>
+      <div class="circle-btn yellow" onclick="setSignal('sig2','yellow')"></div>
+      <div class="circle-btn green" onclick="setSignal('sig2','green')"></div>
+    </div>
+
+    <div class="signal-control">
+      <h3>Signal 3</h3>
+      <div class="circle-btn red" onclick="setSignal('sig3','red')"></div>
+      <div class="circle-btn yellow" onclick="setSignal('sig3','yellow')"></div>
+      <div class="circle-btn green" onclick="setSignal('sig3','green')"></div>
+    </div>
+  </div>
+
+  <script>
+    // Change signal color
+    function setSignal(id,color){
+      document.getElementById(id).setAttribute("fill",color);
+    }
+  </script>
+</body>
+</html>

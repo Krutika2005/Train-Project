@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Station Master - Train Schedule Dashboard</title>
+<style>
+  :root{
+    --deep-blue: #000077ff;
+    --deep-blue-dark: #000066;
+    --accent: #0077cc;
+    --bg: #f3f8ff;
+    --panel: #ffffff;
+    --muted:#7a8aa3;
+    --green:#1aa260;
+    --yellow:#f0b400;
+    --red:#e74c3c;
+    --glass: rgba(255,255,255,0.7);
+    --mono: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:20px; font-family:var(--mono); background:linear-gradient(180deg,#eaf4ff 0%,var(--bg) 100%);
+    color:#10233b; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+
+  /* Header */
+  header {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:18px;
+  }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo {
+    width:54px; height:54px; border-radius:10px; background:linear-gradient(135deg,var(--deep-blue),var(--accent));
+    display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:18px; box-shadow:0 6px 18px rgba(0,0,0,0.12);
+  }
+  h1 { margin:0; font-size:18px; letter-spacing:0.2px; }
+  .meta { color:var(--muted); font-size:13px; }
+
+  /* Layout */
+  .layout { display:grid; grid-template-columns: 1fr 420px; gap:20px; align-items:start; }
+  @media (max-width:1100px){ .layout{ grid-template-columns:1fr; } }
+
+  /* Left column */
+  .card { background:var(--panel); border-radius:12px; padding:14px; box-shadow: 0 6px 24px rgba(12,34,64,0.06); }
+  .search-row { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+  .field { display:flex; flex-direction:column; gap:6px; min-width:180px; flex:1; }
+  label { font-size:12px; color:var(--muted); }
+  select, input[type="date"] { padding:10px 12px; border-radius:8px; border:1px solid #dbeaf7; font-size:14px; background:linear-gradient(180deg,#fff,#fbfeff); outline:none; }
+  select:focus, input:focus { box-shadow:0 4px 12px rgba(0,0,0,0.06); border-color:var(--accent); }
+
+  .btn {
+    background:var(--deep-blue); color:#fff; border:none; padding:12px 18px; border-radius:10px;
+    cursor:pointer; font-weight:600; font-size:14px; transition:transform .12s ease, box-shadow .12s;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(0,0,0,0.12) }
+  .btn.secondary { background:#fff; color:var(--deep-blue); border:1px solid #e6eef9; }
+
+  /* Small controls row */
+  .controls { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  .chip { padding:8px 10px; background:linear-gradient(180deg,#f7fbff,#ffffff); border-radius:8px; font-size:13px; color:var(--muted); border:1px solid #edf6ff; }
+
+  /* Schedule area */
+  .schedule-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .clock { font-family:monospace; color:var(--muted); font-size:13px; display:flex; gap:10px; align-items:center; }
+  .clock .time { font-weight:700; color:var(--deep-blue); font-size:16px; }
+
+  /* table */
+  .table-wrap { overflow:auto; border-radius:10px; border:1px solid #e6f0fb; }
+  table { width:100%; border-collapse:collapse; min-width:900px; font-size:14px; }
+  thead th {
+    position:sticky; top:0; z-index:2; background:linear-gradient(180deg,var(--deep-blue),var(--deep-blue-dark));
+    color:#fff; padding:12px; text-align:center; font-weight:700; border-right:1px solid rgba(255,255,255,0.06);
+  }
+  tbody td { padding:12px; text-align:center; border-bottom:1px solid #f2f8ff; color:#12324a; }
+  tbody tr:nth-child(even){ background:linear-gradient(180deg,#ffffff,#f8fbff); }
+  .train-name { text-align:left; padding-left:18px; font-weight:600; color:#072644; }
+  .muted { color:var(--muted); font-size:13px; }
+
+  /* status indicators */
+  .status {
+    display:inline-flex; gap:8px; align-items:center; justify-content:center; min-width:94px; font-weight:700; padding:6px 10px; border-radius:999px;
+  }
+  .on-time { background:rgba(26,162,96,0.08); color:var(--green); border:1px solid rgba(26,162,96,0.14); }
+  .delayed { background:rgba(231,76,60,0.06); color:var(--red); border:1px solid rgba(231,76,60,0.12); }
+  .arriving { background:rgba(240,180,0,0.07); color:var(--yellow); border:1px solid rgba(240,180,0,0.12); animation:blink 1.6s infinite; }
+  .blink-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .dot-on { background:var(--green); box-shadow:0 0 8px rgba(26,162,96,0.2); }
+  .dot-del { background:var(--red); }
+  .dot-arr { background:var(--yellow); }
+
+  @keyframes blink { 50% { opacity:0.4 } }
+
+  /* right panel */
+  .panel { display:flex; flex-direction:column; gap:12px; position:sticky; top:20px; }
+  .profile { display:flex; gap:10px; align-items:center; padding:10px; border-radius:10px; background:linear-gradient(180deg,#ffffff,#f9fbff); }
+  .avatar { width:56px; height:56px; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--deep-blue)); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:18px; }
+  .profile .info { font-size:13px; }
+  .profile .info .name { font-weight:700; color:#0b2a45; }
+  .panel .card-controls { display:flex; gap:8px; flex-direction:column; }
+
+  /* small utilities */
+  .row { display:flex; gap:8px; align-items:center; }
+  input[type="search"]{ padding:8px 10px; border-radius:8px; border:1px solid #e6f2fb; width:100%; }
+  .footer { margin-top:12px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:13px; }
+
+  /* pagination */
+  .pager { display:flex; gap:8px; align-items:center; }
+  .pager button { padding:8px 10px; border-radius:8px; border:1px solid #e6f2fb; background:white; cursor:pointer; }
+
+  /* responsive tweaks */
+  @media (max-width:760px){
+    thead th, tbody td{ padding:10px; font-size:13px }
+    .search-row { flex-direction:column; align-items:stretch; }
+    .layout { grid-template-columns: 1fr; }
+    .panel{ position:static }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">SM</div>
+    <div>
+      <h1>Station Master Dashboard</h1>
+      <div class="meta">Realistic train schedule • Blue/white theme • Local demo data</div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="clock" title="Local time">
+      <div class="time" id="local-clock">00:00:00</div>
+      <div class="muted" id="local-date">—</div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- left / main -->
+  <div>
+    <div class="card">
+      <!-- Search area -->
+      <div class="search-row" aria-label="Search trains">
+        <div class="field">
+          <label for="from-select">From</label>
+          <select id="from-select" aria-label="From station"></select>
+        </div>
+
+        <div class="field">
+          <label for="to-select">To</label>
+          <select id="to-select" aria-label="To station"></select>
+        </div>
+
+        <div class="field">
+          <label for="date-input">Departure Date</label>
+          <input id="date-input" type="date" />
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn" id="search-btn" title="Search trains">SEARCH</button>
+          <button class="btn secondary" id="clear-btn" title="Clear filters" style="margin-top:6px">Clear</button>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top:12px;">
+        <div class="chip">Auto-generate realistic trains for any route & date</div>
+        <div class="chip" id="route-count">0 trains matched</div>
+        <div style="flex:1"></div>
+        <div class="chip">Mode:
+          <select id="view-mode" style="margin-left:8px; padding:5px 8px; border-radius:6px; border:1px solid #e8f3ff;">
+            <option value="compact">Compact</option>
+            <option value="expanded" selected>Expanded</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- schedule card -->
+    <div class="card" style="margin-top:16px;">
+      <div class="schedule-head">
+        <div>
+          <h3 style="margin:0; color:var(--deep-blue);">🚆 Train Schedule</h3>
+          <div class="muted" id="subtitle">Select From / To and date then click SEARCH</div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="search" id="quick-search" placeholder="Quick filter by train name or number" />
+          <button class="btn secondary" id="refresh-btn">Refresh</button>
+          <button class="btn secondary" id="export-btn">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="table-wrap" id="table-wrap" style="max-height:520px;">
+        <table aria-label="Train schedule table">
+          <thead>
+            <tr>
+              <th style="min-width:220px">Train No & Name</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Platform</th>
+              <th>Arrival</th>
+              <th>Departure</th>
+              <th>Status</th>
+              <th style="min-width:160px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-body">
+            <tr><td colspan="8" class="muted">No results — perform a search</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <div class="muted" id="log-line">No activity yet</div>
+        <div class="pager">
+          <button id="prev-page">&lt;</button>
+          <div class="muted" id="page-ind">1 / 1</div>
+          <button id="next-page">&gt;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- right panel -->
+  <aside class="panel">
+    <div class="card profile">
+      <div class="avatar">SR</div>
+      <div class="info">
+        <div class="name">Shivam Rajput — Station Master</div>
+        <div class="muted">Role: Operations • Station: NDLS</div>
+        <div style="margin-top:8px; display:flex; gap:8px;">
+          <button class="btn secondary" id="view-logs">View Logs</button>
+          <button class="btn secondary" id="settings-btn">Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-controls">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="muted" style="min-width:82px">Auto-refresh</label>
+        <select id="auto-refresh" style="padding:8px;border-radius:8px;border:1px solid #e6f2fb;">
+          <option value="off">Off</option>
+          <option value="10">Every 10s</option>
+          <option value="30">Every 30s</option>
+          <option value="60" selected>Every 60s</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <label class="muted" style="min-width:82px">Rows / page</label>
+        <select id="rows-per-page" style="padding:8px;border-radius:8px;border:1px solid #e6f2fb;">
+          <option>10</option><option>20</option><option selected>30</option><option>50</option>
+        </select>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="muted">Search History</div>
+        <ul id="history-list" style="margin:8px 0 0 12px; padding:0; list-style:disc; color:var(--muted); max-height:160px; overflow:auto"></ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="font-weight:700; margin-bottom:8px;">Station Tools</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn secondary" id="simulate-delay">Simulate Delay</button>
+        <button class="btn secondary" id="toggle-arrivals">Toggle Live Arrivals</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/*
+  Station Master Dashboard - single-file demo
+  - Local "realistic" schedule generation for chosen route & date
+  - Pagination, sorting, quick-search, export CSV
+  - Simulated live updates for statuses (arriving/delayed/on-time)
+  - All data in-memory for high performance
+*/
+
+/* ---------- DATA: Stations + seed trains ---------- */
+const STATIONS = [
+  "NDLS - New Delhi","MMCT - Mumbai Central","BCT - Mumbai Central (Alt)","CSMT - Mumbai CST","HWH - Howrah",
+  "LKO - Lucknow","CNB - Kanpur Central","BBS - Bhubaneswar","PUNE - Pune Junction","PNVL - Panvel",
+  "SBC - Bangalore City","MAS - Chennai Central","KSR - Bengaluru (KSR)","CHTS - Chhatrapati Shivaji",
+  "AGR - Agra Cantt","JAT - Jaipur Junction","NED - Nanded","KYN - Kalyan","GNC - Gonda Junction",
+  "NDX - Nadiad","RNC - Ranchi","BPL - Bhopal Junction","NJP - New Jalpaiguri","SVDK - Sealdah",
+  "BDTS - Bandra Terminus","DLI - Old Delhi"
+]; // sample set; expand as needed
+
+// seed train patterns to use when generating per-route schedules
+const SEED_TRAINS = [
+  {num:"12952", name:"Rajdhani Express", baseSpeed:110},
+  {num:"12004", name:"Shatabdi Express", baseSpeed:100},
+  {num:"12102", name:"Duronto Express", baseSpeed:105},
+  {num:"12229", name:"Garib Rath", baseSpeed:90},
+  {num:"12418", name:"Prayagraj Express", baseSpeed:95},
+  {num:"12302", name:"Kolkata Rajdhani", baseSpeed:110},
+  {num:"12951", name:"Rajdhani (Return)", baseSpeed:110},
+  {num:"12034", name:"Shatabdi (Alt)", baseSpeed:100}
+];
+
+// small util: format time (HH:MM)
+function fmtTime(dateObj){
+  const h = (""+dateObj.getHours()).padStart(2,"0");
+  const m = (""+dateObj.getMinutes()).padStart(2,"0");
+  return `${h}:${m}`;
+}
+
+// random helpers
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(arr){ return arr[randInt(0,arr.length-1)]; }
+
+/* ---------- UI Refs ---------- */
+const fromSelect = document.getElementById('from-select');
+const toSelect = document.getElementById('to-select');
+const dateInput = document.getElementById('date-input');
+const searchBtn = document.getElementById('search-btn');
+const clearBtn = document.getElementById('clear-btn');
+const scheduleBody = document.getElementById('schedule-body');
+const subtitle = document.getElementById('subtitle');
+const routeCount = document.getElementById('route-count');
+const quickSearch = document.getElementById('quick-search');
+const refreshBtn = document.getElementById('refresh-btn');
+const exportBtn = document.getElementById('export-btn');
+const logLine = document.getElementById('log-line');
+const autoRefresh = document.getElementById('auto-refresh');
+const rowsPerPage = document.getElementById('rows-per-page');
+const prevPage = document.getElementById('prev-page');
+const nextPage = document.getElementById('next-page');
+const pageInd = document.getElementById('page-ind');
+const historyList = document.getElementById('history-list');
+const routeCountChip = routeCount;
+const viewMode = document.getElementById('view-mode');
+const localClock = document.getElementById('local-clock');
+const localDate = document.getElementById('local-date');
+const simulateDelayBtn = document.getElementById('simulate-delay');
+const toggleArrivalsBtn = document.getElementById('toggle-arrivals');
+
+/* ---------- APP STATE ---------- */
+let SCHEDULE = []; // full current schedule array
+let FILTERED = []; // filtered for display
+let PAGE = 1;
+let ROWS = parseInt(rowsPerPage.value || "30");
+let AUTO_REFRESH_MS = parseInt(autoRefresh.value || "60") * 1000;
+let autoRefreshTimer = null;
+let arrivalSimulation = true;
+let searchHistory = [];
+
+/* ---------- populate station dropdowns ---------- */
+function populateStations(){
+  STATIONS.forEach(s=>{
+    const o1 = document.createElement('option'); o1.value = s; o1.textContent = s;
+    const o2 = document.createElement('option'); o2.value = s; o2.textContent = s;
+    fromSelect.appendChild(o1);
+    toSelect.appendChild(o2.cloneNode(true));
+  });
+  // set defaults
+  fromSelect.value = "NDLS - New Delhi";
+  toSelect.value = "MMCT - Mumbai Central";
+  // default date = today
+  const today = new Date();
+  dateInput.value = today.toISOString().split('T')[0];
+}
+populateStations();
+
+/* ---------- realistic schedule generator ----------
+   - Uses SEED_TRAINS to create a list of trains between selected stations
+   - Respects requested date and inserts arrival/departure times spaced along day
+   - Adds status: On Time / Arriving (if within 20 minutes) / Delayed (random small chance)
+*/
+function generateSchedule(from, to, isoDate){
+  const date = new Date(isoDate + "T00:00:00");
+  const trains = [];
+  // number of trains depends on popularity of route; simple heuristic:
+  const baseCount = (from.includes("NDLS") || to.includes("NDLS")) ? 8 : 4;
+  const extra = Math.floor(Math.random()*4);
+  const count = baseCount + extra;
+
+  // create a list of departure times over the day between 05:00 - 23:00
+  let startHour = 5;
+  let endHour = 23;
+  let span = endHour - startHour;
+  for(let i=0;i<count;i++){
+    const seed = pick(SEED_TRAINS);
+    const departureHour = startHour + Math.floor((i+Math.random())/count * span);
+    const departureMin = randInt(0,59);
+    const dep = new Date(date.getTime());
+    dep.setHours(departureHour, departureMin, 0, 0);
+    // travel duration estimated by distance heuristic (random here)
+    const travelMins = Math.max(60, Math.floor( (Math.random()*8 + seed.baseSpeed/10)*6 )); // realistic-ish
+    const arr = new Date(dep.getTime() - randInt(10,40)*60000); // arrival before dep for origin station - for demo it is same station arrival
+    // status
+    let status = "On Time";
+    if(Math.random() < 0.12) status = "Delayed";
+    // arriving if departure within next 20 minutes
+    const now = new Date();
+    const minutesToDep = Math.round((dep.getTime() - now.getTime())/60000);
+    if(minutesToDep >= 0 && minutesToDep <= 20) status = "Arriving";
+
+    trains.push({
+      id: `${seed.num}-${i}-${dep.getHours()}`,
+      trainNumber: seed.num,
+      trainName: seed.name,
+      from: from,
+      to: to,
+      platform: `P${randInt(1,8)}`,
+      arrival: fmtTime(arr),
+      departure: fmtTime(dep),
+      depISO: dep.toISOString(),
+      travelMins,
+      status,
+      lastUpdated: new Date().toISOString()
+    });
+  }
+  // sort by departure time
+  trains.sort((a,b)=> new Date(a.depISO) - new Date(b.depISO));
+  return trains;
+}
+
+/* ---------- rendering & UI ---------- */
+function renderTable(){
+  scheduleBody.innerHTML = "";
+  if(FILTERED.length === 0){
+    scheduleBody.innerHTML = '<tr><td colspan="8" class="muted">No trains matched — try a different date or route</td></tr>';
+    routeCountChip.textContent = "0 trains matched";
+    pageInd.textContent = "0 / 0";
+    return;
+  }
+  routeCountChip.textContent = `${FILTERED.length} trains matched`;
+
+  // pagination
+  ROWS = parseInt(rowsPerPage.value);
+  const totalPages = Math.max(1, Math.ceil(FILTERED.length / ROWS));
+  if(PAGE > totalPages) PAGE = totalPages;
+  const start = (PAGE-1)*ROWS;
+  const end = Math.min(FILTERED.length, PAGE*ROWS);
+  pageInd.textContent = `${PAGE} / ${totalPages}`;
+
+  const pageSlice = FILTERED.slice(start, end);
+  pageSlice.forEach(t=>{
+    const tr = document.createElement('tr');
+
+    // status class and dot
+    let statusCls = "on-time";
+    let dotClass = "dot-on";
+    if(t.status.toLowerCase().includes("delay")) { statusCls = "delayed"; dotClass = "dot-del"; }
+    if(t.status.toLowerCase().includes("arriv")) { statusCls = "arriving"; dotClass = "dot-arr"; }
+
+    tr.innerHTML = `
+      <td class="train-name">
+        <div style="display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>${t.trainNumber}</strong> &nbsp; ${t.trainName}</div>
+            <div class="muted">Dur: ${Math.round(t.travelMins/60)}h ${t.travelMins%60}m</div>
+          </div>
+          <div class="muted" style="margin-top:6px">${t.id}</div>
+        </div>
+      </td>
+      <td class="muted">${t.from}</td>
+      <td class="muted">${t.to}</td>
+      <td><strong>${t.platform}</strong></td>
+      <td class="muted">${t.arrival}</td>
+      <td class="muted">${t.departure}</td>
+      <td>
+        <div class="status ${statusCls}">
+          <span class="blink-dot ${dotClass}"></span>
+          <span style="margin-left:8px">${t.status}</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex; gap:8px; justify-content:center;">
+          <button class="btn secondary" onclick="assignPlatform('${t.id}')">Assign</button>
+          <button class="btn secondary" onclick="viewDetails('${t.id}')">Details</button>
+        </div>
+      </td>
+    `;
+    scheduleBody.appendChild(tr);
+  });
+
+  // update subtitle & log
+  const first = FILTERED[0];
+  subtitle.textContent = `Showing ${start+1}-${end} of ${FILTERED.length} trains — next departure: ${first ? first.departure : '-'}`;
+  log(`Rendered page ${PAGE} (${start+1}-${end})`);
+}
+
+/* ---------- filtering, sorting ---------- */
+function applyFilters(){
+  const q = quickSearch.value.trim().toLowerCase();
+  if(!q){
+    FILTERED = [...SCHEDULE];
+  } else {
+    FILTERED = SCHEDULE.filter(t=>{
+      return `${t.trainNumber} ${t.trainName} ${t.from} ${t.to}`.toLowerCase().includes(q);
+    });
+  }
+  // maintain ordering by depISO (already sorted)
+  PAGE = 1;
+  renderTable();
+}
+
+/* ---------- actions ---------- */
+function assignPlatform(id){
+  const idx = SCHEDULE.findIndex(x=>x.id===id);
+  if(idx>=0){
+    const newP = prompt("Assign platform (e.g., P4):", SCHEDULE[idx].platform);
+    if(newP){
+      SCHEDULE[idx].platform = newP.trim();
+      SCHEDULE[idx].lastUpdated = new Date().toISOString();
+      applyFilters();
+      log(`Platform assigned ${id} → ${newP}`);
+    }
+  }
+}
+
+function viewDetails(id){
+  const t = SCHEDULE.find(x=>x.id===id);
+  if(!t) return;
+  const details = `
+    Train: ${t.trainNumber} - ${t.trainName}
+    Route: ${t.from} → ${t.to}
+    Platform: ${t.platform}
+    Arrival: ${t.arrival}
+    Departure: ${t.departure}
+    Travel (min): ${t.travelMins}
+    Status: ${t.status}
+    Last updated: ${t.lastUpdated}
+  `;
+  alert(details);
+}
+
+/* ---------- search / refresh ---------- */
+function searchTrains(){
+  const from = fromSelect.value;
+  const to = toSelect.value;
+  const date = dateInput.value;
+  if(!date){
+    alert("Please select a departure date");
+    return;
+  }
+  if(from === to){
+    alert("From and To cannot be the same");
+    return;
+  }
+  // generate schedule & set as SCHEDULE
+  SCHEDULE = generateSchedule(from, to, date);
+  // store in history
+  const entry = `${from} → ${to} on ${date}`;
+  searchHistory.unshift(entry);
+  if(searchHistory.length > 10) searchHistory.pop();
+  renderHistory();
+  // apply filters and show
+  applyFilters();
+  log(`Search performed: ${entry} — generated ${SCHEDULE.length} trains`);
+}
+
+/* manual refresh: simulates statuses changing */
+function refreshNow(){
+  // small simulation: randomly change status of a couple of trains
+  SCHEDULE.forEach(t=>{
+    // 10% chance to change status
+    if(Math.random() < 0.08){
+      const old = t.status;
+      const r = Math.random();
+      if(r < 0.4) t.status = "Delayed";
+      else if(r < 0.8) t.status = "On Time";
+      else t.status = "Arriving";
+      t.lastUpdated = new Date().toISOString();
+      log(`Status changed: ${t.id} ${old} → ${t.status}`);
+    }
+  });
+  applyFilters();
+}
+
+/* export CSV */
+function exportCSV(){
+  if(!SCHEDULE || SCHEDULE.length === 0){
+    alert("No schedule data to export.");
+    return;
+  }
+  const rows = [
+    ["TrainNumber","TrainName","From","To","Platform","Arrival","Departure","TravelMins","Status","LastUpdated"]
+  ];
+  SCHEDULE.forEach(t=>{
+    rows.push([t.trainNumber, t.trainName, t.from, t.to, t.platform, t.arrival, t.departure, t.travelMins, t.status, t.lastUpdated]);
+  });
+  const csv = rows.map(r => r.map(v => `"${(''+v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `schedule-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  log("Exported schedule to CSV");
+}
+
+/* ---------- helpers ---------- */
+function log(msg){
+  const ts = new Date().toLocaleTimeString();
+  logLine.textContent = `${ts} — ${msg}`;
+}
+
+/* ---------- pagination controls ---------- */
+prevPage.addEventListener('click', ()=>{
+  PAGE = Math.max(1, PAGE-1);
+  renderTable();
+});
+nextPage.addEventListener('click', ()=>{
+  PAGE = PAGE + 1;
+  renderTable();
+});
+
+/* ---------- search history ---------- */
+function renderHistory(){
+  historyList.innerHTML = "";
+  searchHistory.slice(0,8).forEach(h=>{
+    const li = document.createElement('li'); li.style.marginBottom="6px";
+    li.textContent = h;
+    historyList.appendChild(li);
+  });
+}
+
+/* ---------- auto refresh ---------- */
+function setupAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  const val = autoRefresh.value;
+  if(val === "off") return;
+  AUTO_REFRESH_MS = parseInt(val)*1000;
+  autoRefreshTimer = setInterval(()=>{
+    if(arrivalSimulation) refreshNow();
+  }, AUTO_REFRESH_MS);
+}
+
+/* ---------- arrival simulation toggle ---------- */
+function toggleArrivals(){
+  arrivalSimulation = !arrivalSimulation;
+  toggleArrivalsBtn.textContent = arrivalSimulation ? "Toggle Live Arrivals" : "Start Live Arrivals";
+  log(`Arrival simulation ${arrivalSimulation ? 'enabled' : 'disabled'}`);
+}
+
+/* ---------- date-time clock ---------- */
+function updateClock(){
+  const now = new Date();
+  localClock.textContent = now.toLocaleTimeString();
+  localDate.textContent = now.toLocaleDateString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ---------- attach events ---------- */
+searchBtn.addEventListener('click', searchTrains);
+clearBtn.addEventListener('click', ()=>{
+  dateInput.value = new Date().toISOString().split('T')[0];
+  quickSearch.value = "";
+  SCHEDULE = []; FILTERED = [];
+  renderTable();
+  log("Cleared filters and schedule");
+});
+quickSearch.addEventListener('input', ()=>{ applyFilters(); });
+refreshBtn.addEventListener('click', ()=>{ refreshNow(); });
+exportBtn.addEventListener('click', ()=>{ exportCSV(); });
+rowsPerPage.addEventListener('change', ()=>{ PAGE=1; renderTable(); });
+autoRefresh.addEventListener('change', ()=>{ setupAutoRefresh(); });
+simulateDelayBtn.addEventListener('click', ()=>{ SCHEDULE.forEach(t=>{ if(Math.random()<0.4) t.status='Delayed'; }); applyFilters(); log('Simulated delays'); });
+toggleArrivalsBtn.addEventListener('click', toggleArrivals);
+viewMode.addEventListener('change', ()=>{
+  const mode = viewMode.value;
+  document.querySelectorAll('tbody td.train-name').forEach(td=>{
+    td.style.fontSize = mode === 'compact' ? '13px' : '14px';
+  });
+});
+
+/* ---------- start up ---------- */
+(function initDemo(){
+  log("Station Master dashboard ready");
+  setupAutoRefresh();
+  // initial small sample: generate route NDLS → MMCT for today
+  const f = fromSelect.value, t = toSelect.value, d = dateInput.value;
+  SCHEDULE = generateSchedule(f,t,d);
+  applyFilters();
+})();
+
+/* ---------- expose some functions for inline buttons ---------- */
+window.assignPlatform = assignPlatform;
+window.viewDetails = viewDetails;
+</script>
+
+</body>
+</html>

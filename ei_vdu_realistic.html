@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Realistic Electronic Interlocking VDU (Replica)</title>
+<style>
+  :root{
+    --bg:#000;
+    --track:#ffffff;
+    --platform:#00e6b8;
+    --panel:#0b2030;
+    --panel-border:#213548;
+    --font:#cfe8ff;
+    --accent:#ffdf5a;
+    --ok:#16a34a;
+    --err:#ef4444;
+    --muted:#6b7789;
+    --signal-border:#444;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--font);font-family: "Segoe UI", Roboto, Arial, sans-serif;}
+  .wrap{display:flex;height:100vh;overflow:hidden;}
+  /* left: VDU big canvas */
+  .vdu-wrap{flex:1;position:relative;padding:18px 12px;}
+  svg.vdu{width:100%;height:100%;background:linear-gradient(180deg,#000 0%,#04060a 100%);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,0.7);}
+
+  /* panel (right) */
+  .side-panel{width:360px;background:linear-gradient(180deg,#071324,#041126);padding:16px;border-left:1px solid rgba(255,255,255,0.03);box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);
+ overflow-y: auto;
+  max-height: 100vh; /* ensure it fits within viewport */}
+  .side-panel h2{color:var(--accent);margin:0 0 12px;font-size:18px;text-align:center}
+  .controls{display:grid;grid-template-columns:1fr;gap:12px}
+  .card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);padding:10px;border-radius:6px}
+  .card h3{margin:0 0 8px;font-size:13px;color:#9fb7ff}
+  .signal-row{display:flex;align-items:center;gap:8px}
+  .signal-lights{display:flex;gap:8px;margin-left:auto}
+  .circle-btn{width:20px;height:20px;border-radius:50%;border:2px solid var(--signal-border);cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,0.6)}
+  .circle-label{font-size:13px;color:#dfefff;margin-left:8px}
+
+  .small{font-size:12px;color:#a8c3ff}
+  .status-dots{display:flex;gap:8px;padding-top:6px}
+  .dot{width:12px;height:12px;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,0.7)}
+
+  .log{height:140px;overflow:auto;background:rgba(255,255,255,0.015);padding:8px;border-radius:6px;font-size:13px;color:#cfe8ff}
+  .btn{background:#0b63ff;color:#fff;padding:8px 10px;border-radius:6px;border:none;cursor:pointer}
+  .muted{color:var(--muted);font-size:12px}
+
+  /* VDU overlays text */
+  .vdu-title{position:absolute;left:24px;top:20px;font-size:24px;color:#ff77a8;letter-spacing:1px;font-weight:700}
+  .vdu-top-right{position:absolute;right:24px;top:20px;display:flex;gap:8px;align-items:center}
+  .health-dot{width:12px;height:12px;border-radius:50%}
+  .panel-box{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:1.5}
+  .panel-label{font-size:12px;fill:#dbefff}
+
+  /* helper small text inside svg */
+  svg text.small { font-size:12px; fill:#9fb7ff; font-weight:600; }
+  svg .sig-label{font-size:11px; fill:#cfe8ff; font-weight:600; }
+
+  /* tooltip */
+  .tooltip{position:absolute;padding:6px 8px;background:#071624;border:1px solid rgba(255,255,255,0.04);color:#cfe8ff;border-radius:4px;font-size:13px;display:none;z-index:60}
+
+  /* signal circle inside SVG style */
+  .svg-signal{stroke:#222;stroke-width:2;cursor:pointer}
+  .svg-point{stroke:#9fb7ff;stroke-width:3;cursor:pointer}
+  .svg-track{stroke:var(--track);stroke-width:4;stroke-linecap:round}
+  .svg-track-shadow{stroke:rgba(0,0,0,0.5);stroke-width:8;stroke-linecap:round;opacity:0.15}
+  .svg-platform{fill:rgba(0,230,184,0.05);stroke:var(--platform);stroke-width:2}
+  .route-highlight{stroke:var(--accent);stroke-width:6;stroke-linecap:round;opacity:0.95}
+
+  /* small legend */
+  .legend{position:absolute;left:30px;bottom:26px;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.02);font-size:13px;color:#cfe8ff}
+  .legend .row{display:flex;gap:8px;align-items:center}
+  .legend .samp{width:20px;height:10px;background:#fff;border-radius:2px;margin-right:8px}
+
+  /* platform box style text */
+  .platform-text{font-size:13px;fill:#00e6b8;font-weight:700}
+
+  /* make signals appear with small shine */
+  .glow{filter:drop-shadow(0 0 6px rgba(255,255,255,0.05));}
+
+  /* responsive */
+  @media (max-width:1000px){
+    .side-panel{display:none}
+    svg.vdu{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="vdu-wrap">
+    <div class="vdu-title">Nashik Road — INTERLOCKING VDU SIMULATION</div>
+    <div class="vdu-top-right">
+      <div style="font-size:12px;color:#9fb7ff">SYSTEM ONLINE</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div class="health-dot" style="background:var(--ok)"></div>
+        <div class="health-dot" style="background:var(--accent)"></div>
+        <div class="health-dot" style="background:var(--err)"></div>
+      </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- Main SVG map -->
+    <svg class="vdu" id="vdu" viewBox="0 0 1400 800" xmlns="http://www.w3.org/2000/svg" >
+      <!-- background panels like real VDU -->
+      <rect x="12" y="58" width="1320" height="620" rx="6" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.02)"></rect>
+
+      <!-- left info boxes (system panels) -->
+      <g id="top-panels" transform="translate(30,70)">
+        <rect x="0" y="0" width="280" height="50" class="panel-box"></rect>
+        <text x="12" y="20" class="panel-label">EILFL | EIHFL</text>
+        <rect x="0" y="66" width="460" height="40" class="panel-box"></rect>
+        <text x="12" y="90" class="panel-label">SYSTEM COMMUNICATION INDICATION</text>
+        <rect x="480" y="0" width="320" height="40" class="panel-box"></rect>
+        <text x="500" y="22" class="panel-label">VDU A  VDU B</text>
+        <rect x="810" y="0" width="250" height="40" class="panel-box"></rect>
+        <text x="820" y="22" class="panel-label">SYSTEM ONLINE</text>
+      </g>
+
+      <!-- small routing text left -->
+      <text x="44" y="240" class="small">FROM:# </text>
+
+      <!-- Mainline tracks (white) - draw shadows then track for depth -->
+      <path d="M60,260 L360,260 L520,260 L740,260 L1000,260 L1280,260" class="svg-track-shadow"></path>
+      <path id="up_main" d="M60,260 L360,260 L520,260 L740,260 L1000,260 L1280,260" class="svg-track"></path>
+
+      <path d="M60,360 L300,360 L520,360 L760,360 L1000,360 L1280,360" class="svg-track-shadow"></path>
+      <path id="mid_main" d="M60,360 L300,360 L520,360 L760,360 L1000,360 L1280,360" class="svg-track"></path>
+
+      <path d="M60,460 L300,460 L520,460 L760,460 L1000,460 L1280,460" class="svg-track-shadow"></path>
+      <path id="down_main" d="M60,460 L300,460 L520,460 L760,460 L1000,460 L1280,460" class="svg-track"></path>
+
+      <!-- Turnouts/points (V shapes) -->
+      <!-- P1 at left: straight or diverge to mid -->
+      <g id="point_p1" class="point-group">
+        <path id="p1_straight" d="M360,260 L360,360" class="svg-point" stroke-width="3"></path>
+        <path id="p1_div" d="M360,260 L520,360" class="svg-point" stroke-dasharray="6,4" stroke-width="3" opacity="0.0"></path>
+        <circle cx="360" cy="260" r="8" fill="#0a2030" stroke="#9fb7ff" stroke-width="3" class="glow" id="p1_handle" style="cursor:pointer"/>
+        <text x="340" y="248" class="sig-label">P1</text>
+      </g>
+
+      <!-- P2 near mid -->
+      <g id="point_p2">
+        <path id="p2_straight" d="M740,360 L740,460" class="svg-point" stroke-width="3"></path>
+        <path id="p2_div" d="M740,360 L1000,460" class="svg-point" stroke-dasharray="6,4" stroke-width="3" opacity="0.0"></path>
+        <circle cx="740" cy="360" r="8" fill="#0a2030" stroke="#9fb7ff" stroke-width="3" class="glow" id="p2_handle" style="cursor:pointer"/>
+        <text x="720" y="348" class="sig-label">P2</text>
+      </g>
+
+      <!-- P3 near right -->
+      <g id="point_p3">
+        <path id="p3_straight" d="M1100,260 L1100,360" class="svg-point" stroke-width="3"></path>
+        <path id="p3_div" d="M1100,260 L760,360" class="svg-point" stroke-dasharray="6,4" stroke-width="3" opacity="0.0"></path>
+        <circle cx="1100" cy="260" r="8" fill="#0a2030" stroke="#9fb7ff" stroke-width="3" class="glow" id="p3_handle" style="cursor:pointer"/>
+        <text x="1080" y="248" class="sig-label">P3</text>
+      </g>
+
+      <!-- Platforms as boxed blocks with labels -->
+      <g id="platforms">
+        <rect x="200" y="210" width="220" height="90" rx="6" class="svg-platform"></rect>
+        <text x="320" y="260" class="platform-text" text-anchor="middle">H.L. PASSENGER PLATFORM (555m) — P1</text>
+
+        <rect x="530" y="210" width="240" height="90" rx="6" class="svg-platform"></rect>
+        <text x="650" y="260" class="platform-text" text-anchor="middle">UP LOOP / MAIN — P2</text>
+
+        <rect x="900" y="210" width="240" height="90" rx="6" class="svg-platform"></rect>
+        <text x="1020" y="260" class="platform-text" text-anchor="middle">GOODS SHED / STATION BUILDING — P3</text>
+      </g>
+
+      <!-- Goods/maintenance lines (orange style) -->
+      <path d="M520,460 L520,520 L760,520 L1100,520" stroke="#ff7a2d" stroke-width="4" stroke-linecap="round" opacity="0.9"></path>
+      <text x="540" y="540" class="small">GOODS SHED / STABLING</text>
+
+      <!-- Maintenance line bottom -->
+      <path d="M60,660 L1280,660" class="svg-track" stroke-dasharray="6 6" stroke="#666" stroke-width="3"></path>
+      <text x="1200" y="650" class="small">MAINTENANCE SIDING</text>
+
+      <!-- Signals (many) - represent as circles -->
+      <!-- Leftmost home -->
+      <g id="signals">
+        <g class="sig" data-id="S01">
+          <circle cx="48" cy="260" r="10" class="svg-signal" fill="#ef4444" id="sig_S01"/>
+          <text x="68" y="267" class="sig-label">S01</text>
+        </g>
+        <g class="sig" data-id="S02">
+          <circle cx="320" cy="260" r="10" class="svg-signal" fill="#ef4444" id="sig_S02"/>
+          <text x="338" y="267" class="sig-label">S02</text>
+        </g>
+        <g class="sig" data-id="S03">
+          <circle cx="520" cy="260" r="10" class="svg-signal" fill="#ef4444" id="sig_S03"/>
+          <text x="540" y="267" class="sig-label">S03</text>
+        </g>
+        <g class="sig" data-id="S04">
+          <circle cx="740" cy="260" r="10" class="svg-signal" fill="#ef4444" id="sig_S04"/>
+          <text x="760" y="267" class="sig-label">S04</text>
+        </g>
+        <g class="sig" data-id="S05">
+          <circle cx="1000" cy="260" r="10" class="svg-signal" fill="#ef4444" id="sig_S05"/>
+          <text x="1020" y="267" class="sig-label">S05</text>
+        </g>
+        <!-- signals for mid line -->
+        <g class="sig" data-id="S06">
+          <circle cx="48" cy="360" r="10" class="svg-signal" fill="#ef4444" id="sig_S06"/>
+          <text x="68" y="367" class="sig-label">S06</text>
+        </g>
+        <g class="sig" data-id="S07">
+          <circle cx="320" cy="360" r="10" class="svg-signal" fill="#ef4444" id="sig_S07"/>
+          <text x="338" y="367" class="sig-label">S07</text>
+        </g>
+        <g class="sig" data-id="S08">
+          <circle cx="520" cy="360" r="10" class="svg-signal" fill="#ef4444" id="sig_S08"/>
+          <text x="540" y="367" class="sig-label">S08</text>
+        </g>
+        <g class="sig" data-id="S09">
+          <circle cx="740" cy="360" r="10" class="svg-signal" fill="#ef4444" id="sig_S09"/>
+          <text x="760" y="367" class="sig-label">S09</text>
+        </g>
+        <g class="sig" data-id="S10">
+          <circle cx="1000" cy="360" r="10" class="svg-signal" fill="#ef4444" id="sig_S10"/>
+          <text x="1020" y="367" class="sig-label">S10</text>
+        </g>
+
+        <!-- down line -->
+        <g class="sig" data-id="S11">
+          <circle cx="48" cy="460" r="10" class="svg-signal" fill="#ef4444" id="sig_S11"/>
+          <text x="68" y="467" class="sig-label">S11</text>
+        </g>
+        <g class="sig" data-id="S12">
+          <circle cx="320" cy="460" r="10" class="svg-signal" fill="#ef4444" id="sig_S12"/>
+          <text x="338" y="467" class="sig-label">S12</text>
+        </g>
+        <g class="sig" data-id="S13">
+          <circle cx="520" cy="460" r="10" class="svg-signal" fill="#ef4444" id="sig_S13"/>
+          <text x="540" y="467" class="sig-label">S13</text>
+        </g>
+        <g class="sig" data-id="S14">
+          <circle cx="740" cy="460" r="10" class="svg-signal" fill="#ef4444" id="sig_S14"/>
+          <text x="760" y="467" class="sig-label">S14</text>
+        </g>
+        <g class="sig" data-id="S15">
+          <circle cx="1000" cy="460" r="10" class="svg-signal" fill="#ef4444" id="sig_S15"/>
+          <text x="1020" y="467" class="sig-label">S15</text>
+        </g>
+      </g>
+
+      <!-- Station building box / shunting panel style -->
+      <rect x="950" y="510" width="320" height="130" rx="6" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.03)"/>
+      <text x="960" y="540" class="small">STATION BUILDING / SHUNTING PANEL</text>
+
+      <!-- route highlight example element (will be toggled by JS) -->
+      <path id="route_highlight" d="" class="route-highlight" style="display:none"></path>
+
+      <!-- footer message bar -->
+      <rect x="280" y="740" width="640" height="38" rx="6" fill="#900" opacity="0.8"></rect>
+      <text x="300" y="765" fill="#fff" style="font-weight:700;font-size:13px">ALERT: ENSURE TRACK IS CLEARED BEFORE INITIATING ROUTE</text>
+    </svg>
+
+    <div class="legend">
+      <div class="row"><div class="samp" style="background:#fff"></div>Track (white)</div>
+      <div class="row" style="margin-top:4px"><div class="samp" style="background:yellow"></div>Active Route</div>
+      <div class="row" style="margin-top:4px"><div class="samp" style="background:#00e6b8"></div>Platform Box</div>
+    </div>
+
+  </div>
+
+  <!-- Side control panel -->
+  <div class="side-panel">
+    <h2>STATION MASTER PANEL</h2>
+
+    <div class="card">
+      <h3>System Status</h3>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="small">VDU A <span style="color:var(--ok)">●</span></div>
+          <div class="small">VDU B <span style="color:var(--accent)">●</span></div>
+          <div class="small">COMM LINK <span style="color:var(--ok)">●</span></div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="text-align:right">
+          <div class="small">TIME</div>
+          <div id="clock" style="font-weight:700;margin-top:6px">--:--:--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Signal Controls</h3>
+      <!-- create controls for key signals -->
+      <div id="signalControls" style="display:flex;flex-direction:column;gap:10px">
+        <!-- each control row is generated by JavaScript; placeholder rendered here for layout -->
+        <div class="signal-row">
+          <div class="small">S01</div>
+          <div class="signal-lights" style="margin-left:auto">
+            <div class="circle-btn" id="btn_S01_red" style="background:#ef4444" title="Red"></div>
+            <div class="circle-btn" id="btn_S01_yellow" style="background:#f59e0b" title="Yellow"></div>
+            <div class="circle-btn" id="btn_S01_green" style="background:#16a34a" title="Green"></div>
+          </div>
+        </div>
+        <div class="signal-row">
+          <div class="small">S06</div>
+          <div class="signal-lights" style="margin-left:auto">
+            <div class="circle-btn" id="btn_S06_red" style="background:#ef4444"></div>
+            <div class="circle-btn" id="btn_S06_yellow" style="background:#f59e0b"></div>
+            <div class="circle-btn" id="btn_S06_green" style="background:#16a34a"></div>
+          </div>
+        </div>
+        <div class="signal-row">
+          <div class="small">S11</div>
+          <div class="signal-lights" style="margin-left:auto">
+            <div class="circle-btn" id="btn_S11_red" style="background:#ef4444"></div>
+            <div class="circle-btn" id="btn_S11_yellow" style="background:#f59e0b"></div>
+            <div class="circle-btn" id="btn_S11_green" style="background:#16a34a"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Points / Switches</h3>
+      <div style="display:flex;gap:10px">
+        <div>
+          <div class="small">P1</div>
+          <button class="btn" id="toggleP1">Toggle P1</button>
+        </div>
+        <div>
+          <div class="small">P2</div>
+          <button class="btn" id="toggleP2">Toggle P2</button>
+        </div>
+        <div>
+          <div class="small">P3</div>
+          <button class="btn" id="toggleP3">Toggle P3</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Route Actions</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="route_to_p1">Route → P1</button>
+        <button class="btn" id="route_to_p2">Route → P2</button>
+        <button class="btn" id="route_to_p3">Route → P3</button>
+      </div>
+      <div style="height:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="spawn_train">Spawn Train</button>
+        <button class="btn" id="clear_routes" style="background:#666">Clear Routes</button>
+      </div>
+      <div style="height:8px"></div>
+      <div class="muted">Note: Train starts only if its entry signal is GREEN and route is set.</div>
+    </div>
+
+    <div class="card">
+      <h3>Event Log</h3>
+      <div class="log" id="logBox"></div>
+    </div>
+
+    <div style="height:10px"></div>
+    <div style="font-size:12px;color:#9fb7ff;text-align:center">ELECTRONIC INTERLOCKING — DEMO</div>
+
+  </div>
+</div>
+<script>
+// tooltip, log, clock (unchanged)
+const tooltip = document.getElementById('tooltip');
+const logBox = document.getElementById('logBox');
+function updateClock(){
+  const el = document.getElementById('clock');
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// STATE
+const SIGNALS = {
+  'S01':'red','S02':'red','S03':'red','S04':'red','S05':'red',
+  'S06':'red','S07':'red','S08':'red','S09':'red','S10':'red',
+  'S11':'red','S12':'red','S13':'red','S14':'red','S15':'red'
+};
+const POINTS = { 'P1':'straight','P2':'straight','P3':'straight' };
+let activeRoute = null;
+let trains = [];
+let nextTrainId = 1;
+
+// LOG
+function log(txt){
+  const p = document.createElement('div');
+  p.textContent = `[${new Date().toLocaleTimeString()}] ${txt}`;
+  logBox.prepend(p);
+}
+
+// SIGNAL FUNCTIONS
+function setSigFill(sigId, color){
+  const el = document.getElementById('sig_'+sigId);
+  if(!el) return;
+  const fillColor = color==='red'? '#ef4444' : (color==='yellow'? '#f59e0b' : '#16a34a');
+  el.setAttribute('fill', fillColor);
+  SIGNALS[sigId]=color;
+  log(`${sigId} set to ${color.toUpperCase()}`);
+  tryAutoStartForRoute(sigToRoute(sigId));
+}
+
+// map signals to route for auto-start
+function sigToRoute(sigId){
+  const mapping = { 'S01':'P1','S02':'P1','S03':'P1','S04':'P2','S05':'P2','S06':'P2','S07':'P2','S08':'P3','S09':'P3','S10':'P3','S11':'P3','S12':'P3','S13':'P3','S14':'P3','S15':'P3' };
+  return mapping[sigId];
+}
+
+// cycle signal via SVG click
+function cycleSignal(sigId){
+  const curr = SIGNALS[sigId];
+  const next = curr==='red'?'yellow':(curr==='yellow'?'green':'red');
+  setSigFill(sigId,next);
+}
+
+// DYNAMICALLY CREATE PANEL BUTTONS FOR ALL SIGNALS
+const panelContainer = document.getElementById('signalControls');
+panelContainer.innerHTML=''; // clear placeholder
+Object.keys(SIGNALS).forEach(sigId=>{
+  const row = document.createElement('div');
+  row.className='signal-row';
+  row.innerHTML=`
+    <div class="small">${sigId}</div>
+    <div class="signal-lights" style="margin-left:auto">
+      <div class="circle-btn" id="btn_${sigId}_red" style="background:#ef4444" title="Red"></div>
+      <div class="circle-btn" id="btn_${sigId}_yellow" style="background:#f59e0b" title="Yellow"></div>
+      <div class="circle-btn" id="btn_${sigId}_green" style="background:#16a34a" title="Green"></div>
+    </div>
+  `;
+  panelContainer.appendChild(row);
+  ['red','yellow','green'].forEach(color=>{
+    const btn=document.getElementById(`btn_${sigId}_${color}`);
+    btn.addEventListener('click', ()=> setSigFill(sigId,color));
+  });
+});
+
+// POINT FUNCTIONS
+function togglePoint(pid){
+  POINTS[pid] = POINTS[pid]==='straight'?'divert':'straight';
+  updatePointVisual(pid);
+  log(`Point ${pid} toggled to ${POINTS[pid].toUpperCase()}`);
+}
+function updatePointVisual(pid){
+  const straight = document.getElementById(`${pid.toLowerCase()}_straight`);
+  const div = document.getElementById(`${pid.toLowerCase()}_div`);
+  if(POINTS[pid]==='straight'){ straight.setAttribute('opacity',1); div.setAttribute('opacity',0); }
+  else{ straight.setAttribute('opacity',0); div.setAttribute('opacity',1); }
+  document.getElementById(`${pid.toLowerCase()}_handle`).setAttribute('stroke', POINTS[pid]==='straight'?'#9fb7ff':'#16a34a');
+}
+['P1','P2','P3'].forEach(pid=>{
+  document.getElementById('toggle'+pid).addEventListener('click', ()=> togglePoint(pid));
+  document.getElementById(pid.toLowerCase()+'_handle').addEventListener('click', ()=> togglePoint(pid));
+});
+
+// ROUTE FUNCTIONS
+function canStartRoute(routeName){
+  const mapping = {'P1':'S01','P2':'S06','P3':'S11'};
+  const sig = mapping[routeName];
+  if(!sig) return false;
+  return SIGNALS[sig]==='green' && (!activeRoute || activeRoute===routeName);
+}
+function initiateRoute(platform){
+  if(platform==='P1'){ POINTS.P1='straight'; POINTS.P2='straight'; POINTS.P3='straight'; setRouteHighlight("M60,260 L360,260 L400,260 L400,360 L520,360 L740,360"); }
+  else if(platform==='P2'){ POINTS.P1='divert'; POINTS.P2='straight'; POINTS.P3='straight'; setRouteHighlight("M60,260 L360,260 L520,360 L740,360 L1000,360"); }
+  else if(platform==='P3'){ POINTS.P1='divert'; POINTS.P2='divert'; POINTS.P3='divert'; setRouteHighlight("M60,260 L360,260 L520,360 L760,360 L1000,460 L1100,460"); }
+  ['P1','P2','P3'].forEach(updatePointVisual);
+  activeRoute=platform;
+  log(`Route initiated to ${platform}`);
+}
+function setRouteHighlight(pathD){
+  const el=document.getElementById('route_highlight');
+  el.setAttribute('d',pathD);
+  el.style.display='block';
+}
+function clearRoute(){
+  activeRoute=null;
+  document.getElementById('route_highlight').style.display='none';
+  POINTS.P1='straight'; POINTS.P2='straight'; POINTS.P3='straight';
+  ['P1','P2','P3'].forEach(updatePointVisual);
+  log('Route cleared');
+}
+
+// TRAIN FUNCTIONS (unchanged)
+function spawnTrain(routeName){
+  if(!routeName) return;
+  if(!canStartRoute(routeName)){ alert('Cannot spawn: entry signal not green or route conflict'); return; }
+  const id='T'+(nextTrainId++);
+  let start={x:48,y:260};
+  const svg=document.getElementById('vdu');
+  const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circle.setAttribute('cx',start.x); circle.setAttribute('cy',start.y); circle.setAttribute('r',11); circle.setAttribute('fill','#ff2b2b'); circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width',1.2); circle.setAttribute('id',id);
+  svg.appendChild(circle);
+  trains.push({id,el:circle,path:computePathForRoute(routeName),idx:0,speed:1.6,route:routeName});
+  log(`${id} spawned on route ${routeName}`);
+}
+function computePathForRoute(routeName){
+  if(routeName==='P1') return [{x:60,y:260},{x:360,y:260},{x:360,y:360},{x:520,y:360},{x:650,y:360},{x:760,y:360}];
+  else if(routeName==='P2') return [{x:60,y:260},{x:360,y:260},{x:520,y:360},{x:740,y:360},{x:900,y:360},{x:1000,y:360}];
+  else return [{x:60,y:260},{x:360,y:260},{x:520,y:360},{x:760,y:360},{x:1000,y:460},{x:1100,y:460},{x:1200,y:460}];
+}
+function animateTrains(){
+  const removeIdx=[];
+  trains.forEach((t,idx)=>{
+    if(!t.el) return;
+    const target=t.path[t.idx+1]||t.path[t.idx];
+    const cx=parseFloat(t.el.getAttribute('cx'));
+    const cy=parseFloat(t.el.getAttribute('cy'));
+    const dx=target.x-cx; const dy=target.y-cy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<2){ if(t.idx<t.path.length-1) t.idx++; else { try{t.el.remove();}catch{} removeIdx.push(idx); log(`${t.id} reached destination for ${t.route}`); if(activeRoute===t.route) clearRoute(); } }
+    else { const nx=cx+(dx/dist)*t.speed; const ny=cy+(dy/dist)*t.speed; t.el.setAttribute('cx',nx); t.el.setAttribute('cy',ny); }
+  });
+  for(let i=removeIdx.length-1;i>=0;i--) trains.splice(removeIdx[i],1);
+  requestAnimationFrame(animateTrains);
+}
+requestAnimationFrame(animateTrains);
+
+// auto-start when signal green
+function tryAutoStartForRoute(routeName){ if(activeRoute===routeName && canStartRoute(routeName)) spawnTrain(routeName); }
+
+// hook SVG clicks
+document.querySelectorAll('#signals .sig circle').forEach(c=>{
+  c.addEventListener('click',()=>{ const id=c.id.replace('sig_',''); cycleSignal(id); });
+  c.addEventListener('mouseenter',()=>{ const id=c.id.replace('sig_',''); tooltip.style.display='block'; tooltip.textContent=`Signal ${id} — ${SIGNALS[id].toUpperCase()}`; });
+  c.addEventListener('mouseleave',()=>{ tooltip.style.display='none'; });
+  c.addEventListener('mousemove',(ev)=>{ tooltip.style.left=(ev.pageX+12)+'px'; tooltip.style.top=(ev.pageY+12)+'px'; });
+});
+
+// ROUTE BUTTONS
+document.getElementById('route_to_p1').addEventListener('click',()=>initiateRoute('P1'));
+document.getElementById('route_to_p2').addEventListener('click',()=>initiateRoute('P2'));
+document.getElementById('route_to_p3').addEventListener('click',()=>initiateRoute('P3'));
+
+// SPAWN / CLEAR
+document.getElementById('spawn_train').addEventListener('click',()=>{ if(!activeRoute){ alert('Set route first'); return; } spawnTrain(activeRoute); });
+document.getElementById('clear_routes').addEventListener('click',clearRoute);
+
+// INITIALIZE POINT VISUALS
+['P1','P2','P3'].forEach(updatePointVisual);
+
+log('VDU simulation loaded — signals now fully controllable');
+</script>
+
+</body>
+</html>

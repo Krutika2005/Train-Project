@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Station Master — Reports</title>
+<style>
+  :root{
+    --deep:#0000ff; /* user requested deep blue */
+    --accent:#0055ff;
+    --bg:#f4f8ff;
+    --panel:#ffffff;
+    --muted:#6b7a9a;
+    --success:#1aa260;
+    --danger:#e74c3c;
+    --glass: rgba(255,255,255,0.85);
+    --mono: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{font-family:var(--mono); margin:0; padding:22px; background:linear-gradient(180deg,#eff6ff 0%,var(--bg) 100%); color:#0f2340}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--deep),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,0.12)}
+  h1{margin:0;font-size:20px}
+  .subtitle{color:var(--muted);font-size:13px}
+
+  .toolbar{display:flex;gap:12px;align-items:center}
+  .btn{background:var(--deep);color:#fff;padding:10px 14px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--deep);border:1px solid rgba(0,0,255,0.12)}
+  .btn.warn{background:var(--accent)}
+  .btn.small{padding:8px 10px;font-size:13px}
+
+  .layout{display:grid;grid-template-columns:340px 1fr;gap:18px}
+  @media (max-width:980px){.layout{grid-template-columns:1fr;}}
+
+  .panel{background:var(--panel);padding:14px;border-radius:12px;box-shadow:0 12px 30px rgba(12,34,64,0.06)}
+  .filters{display:flex;flex-direction:column;gap:12px}
+  label{font-size:13px;color:var(--muted)}
+  select,input[type=date],input[type=text]{padding:10px;border-radius:8px;border:1px solid #e6f0ff;background:linear-gradient(180deg,#fff,#fbfeff);outline:none}
+  .row{display:flex;gap:10px}
+  .row .field{flex:1}
+
+  /* report list */
+  .report-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .muted{color:var(--muted)}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{background:var(--deep);color:#fff;padding:10px;border-right:1px solid rgba(255,255,255,0.06);position:sticky;top:0}
+  tbody td{padding:12px;border-bottom:1px solid #f1f7ff}
+  tbody tr:nth-child(even){background:linear-gradient(180deg,#ffffff,#fbfdff)}
+  .small-muted{font-size:13px;color:var(--muted)}
+
+  /* cards for metrics */
+  .metrics{display:flex;gap:12px;margin-bottom:12px}
+  .metric{flex:1;background:linear-gradient(180deg,#fff,#fbfeff);padding:12px;border-radius:10px;border:1px solid #eaf2ff}
+  .metric h3{margin:0;font-size:18px}
+  .metric p{margin:6px 0 0;color:var(--muted)}
+
+  /* chart area */
+  .chart-wrap{display:flex;gap:12px;align-items:center}
+  canvas{background:linear-gradient(180deg,#fff,#fbfeff);border-radius:8px;padding:8px;border:1px solid #eef6ff}
+
+  /* print styles */
+  @media print{
+    body{background:#fff}
+    header,.sidebar-buttons,.no-print{display:none}
+    .layout{grid-template-columns:1fr}
+    .panel{box-shadow:none;border-radius:0;padding:6px}
+    table{font-size:12px}
+    thead th{position:static}
+  }
+
+  /* utilities */
+  .searchbox{display:flex;gap:8px}
+  .flex{display:flex;gap:8px;align-items:center}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid #e6f3ff;color:var(--muted);background:linear-gradient(180deg,#fff,#f8fbff)}
+  .controls{display:flex;gap:8px}
+
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,18,36,0.45)}
+  .modal .box{background:#fff;padding:18px;border-radius:12px;width:720px;max-width:95%;box-shadow:0 20px 50px rgba(2,8,23,0.6)}
+  .modal .box h2{margin:0 0 8px}
+  .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+
+  /* advanced table actions */
+  .action-btn{background:transparent;border:1px solid #eef6ff;padding:8px 10px;border-radius:8px;cursor:pointer}
+
+  /* pretty scrollbar for table wrap */
+  .table-wrap{max-height:520px;overflow:auto;border-radius:10px}
+  .table-wrap::-webkit-scrollbar{height:10px;width:10px}
+  .table-wrap::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--deep),var(--accent));border-radius:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">SM</div>
+    <div>
+      <h1>Station Master — Reports</h1>
+      <div class="subtitle">Generate printable, exportable station reports — realistic visuals & advanced options</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="muted">Preview / Print</div>
+    <button class="btn" id="print-btn">Print / Save PDF</button>
+    <button class="btn ghost" id="export-csv">Export CSV</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div class="muted">Filters</div>
+        <div style="font-weight:700">Report Parameters</div>
+      </div>
+      <div class="pill">Advanced</div>
+    </div>
+
+    <div class="filters">
+      <div class="row">
+        <div class="field">
+          <label for="filter-from">From Station</label>
+          <select id="filter-from"></select>
+        </div>
+        <div class="field">
+          <label for="filter-to">To Station</label>
+          <select id="filter-to"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="date-start">Start Date</label>
+          <input id="date-start" type="date" />
+        </div>
+        <div class="field">
+          <label for="date-end">End Date</label>
+          <input id="date-end" type="date" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="station-role">Station / Role</label>
+          <select id="station-role">
+            <option>All Stations</option>
+            <option>Terminal</option>
+            <option>Junction</option>
+            <option>Suburban</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="generate-report">Generate Report</button>
+            <button class="btn ghost" id="preview-btn">Preview</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:6px">
+        <div class="muted" style="font-weight:700;margin-bottom:6px">Quick Metrics</div>
+        <div class="metrics">
+          <div class="metric">
+            <h3 id="m-total">0</h3>
+            <p>Total trains in range</p>
+          </div>
+          <div class="metric">
+            <h3 id="m-on-time">0</h3>
+            <p>On time</p>
+          </div>
+          <div class="metric">
+            <h3 id="m-delayed">0</h3>
+            <p>Delayed</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px">
+        <div class="muted" style="font-weight:700;margin-bottom:6px">Report Templates</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn ghost" id="tmpl-daily">Daily Summary</button>
+          <button class="btn ghost" id="tmpl-weekly">Weekly Trend</button>
+          <button class="btn ghost" id="tmpl-custom">Custom Log</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="no-print">
+        <div class="muted" style="font-weight:700;margin-bottom:6px">Saved Reports</div>
+        <div id="saved-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="panel">
+      <div class="report-head">
+        <div>
+          <h2 style="margin:0;color:var(--deep)">Report Viewer</h2>
+          <div class="small-muted" id="report-meta">Select filters then click Generate</div>
+        </div>
+        <div class="controls no-print">
+          <input type="text" id="search-quick" placeholder="Quick filter (train no / name)" style="padding:10px;border-radius:8px;border:1px solid #eef6ff" />
+          <button class="btn small" id="download-pdf">Download PDF</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="report-table">
+          <thead>
+            <tr>
+              <th>Train No & Name</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Platform</th>
+              <th>Arrival</th>
+              <th>Departure</th>
+              <th>Delay (min)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="8" class="small-muted">No report generated yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div class="muted">Entries: <span id="entry-count">0</span></div>
+        <div class="muted">Generated at: <span id="gen-time">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-weight:700">Visual Summary</div>
+        <div class="small-muted">Printable charts below</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart-pie" width="320" height="220"></canvas>
+        <canvas id="chart-line" width="520" height="220"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- modal for preview -->
+<div class="modal" id="modal-preview">
+  <div class="box">
+    <h2>Report Preview</h2>
+    <div id="preview-content" style="max-height:420px;overflow:auto;border-radius:6px;padding:6px;border:1px solid #eef6ff;background:linear-gradient(180deg,#fff,#fbfeff)"></div>
+    <div class="actions">
+      <button class="btn ghost" id="modal-close">Close</button>
+      <button class="btn" id="modal-print">Print Preview</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Advanced Station Master Reports Page
+   - Generates printable reports from local demo data
+   - Export CSV, Download PDF (via print), print-friendly CSS
+   - Charts drawn via Canvas (no external libs)
+   - Save / load report templates in localStorage
+   - Fits the 'realistic' and 'attractive' brief
+*/
+
+// Data: station list (expanded)
+const STATIONS = [
+  "NDLS - New Delhi","DLI - Old Delhi","NDX - Nadiad","MMCT - Mumbai Central","BCT - Mumbai Central (Alt)",
+  "CSMT - Mumbai CST","BCTL - Vasai Road","HWH - Howrah","SDAH - Sealdah","LKO - Lucknow","CNB - Kanpur Central",
+  "BPL - Bhopal","SBC - Bangalore City","MAS - Chennai Central","PUNE - Pune","PNVL - Panvel","BDTS - Bandra Terminus",
+  "NJP - New Jalpaiguri","JAT - Jaipur","AGR - Agra Cantt","BBS - Bhubaneswar","KYN - Kalyan","GNC - Gonda","NED - Nanded"
+];
+
+// Demo train data generator (re-usable)
+function genDemoData(from,to,startIso,endIso){
+  const start = new Date(startIso + 'T00:00:00');
+  const end = new Date(endIso + 'T23:59:59');
+  const list = [];
+  // create daily trains for each day in range
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    const date = new Date(d);
+    const day = date.getDate();
+    // random number of services
+    const services = 6 + (Math.abs(day)%4);
+    for(let i=0;i<services;i++){
+      const depHour = 5 + Math.floor((i/services)*18) + Math.floor(Math.random()*2);
+      const depMin = Math.floor(Math.random()*60);
+      const dep = new Date(date); dep.setHours(depHour, depMin, 0,0);
+      const travel = 60 + Math.floor(Math.random()*500);
+      const arr = new Date(dep.getTime() + travel*60000);
+      const delayed = Math.random() < 0.14 ? Math.floor(5 + Math.random()*90) : 0;
+      const status = delayed>0 ? 'Delayed' : (Math.random()<0.08 ? 'Cancelled' : 'On Time');
+      const seedNum = 12000 + Math.floor(Math.random()*999);
+      list.push({
+        id: `${seedNum}-${date.toISOString().slice(0,10)}-${i}`,
+        trainNumber: seedNum,
+        trainName: `Express ${seedNum}`,
+        from: from,
+        to: to,
+        platform: `P${1+Math.floor(Math.random()*12)}`,
+        arrival: arr.toTimeString().slice(0,5),
+        departure: dep.toTimeString().slice(0,5),
+        delay: delayed,
+        status: status,
+        date: date.toISOString().slice(0,10)
+      });
+    }
+  }
+  // sort by date+departure
+  list.sort((a,b)=> (a.date + a.departure) > (b.date + b.departure) ? 1 : -1);
+  return list;
+}
+
+// UI refs
+const filterFrom = document.getElementById('filter-from');
+const filterTo = document.getElementById('filter-to');
+const dateStart = document.getElementById('date-start');
+const dateEnd = document.getElementById('date-end');
+const generateBtn = document.getElementById('generate-report');
+const reportTable = document.getElementById('report-table').querySelector('tbody');
+const entryCount = document.getElementById('entry-count');
+const genTime = document.getElementById('gen-time');
+const mTotal = document.getElementById('m-total');
+const mOnTime = document.getElementById('m-on-time');
+const mDelayed = document.getElementById('m-delayed');
+const reportMeta = document.getElementById('report-meta');
+const searchQuick = document.getElementById('search-quick');
+const exportCsvBtn = document.getElementById('export-csv');
+const printBtn = document.getElementById('print-btn');
+const downloadPdf = document.getElementById('download-pdf');
+const previewBtn = document.getElementById('preview-btn');
+const modal = document.getElementById('modal-preview');
+const modalClose = document.getElementById('modal-close');
+const modalPrint = document.getElementById('modal-print');
+const previewContent = document.getElementById('preview-content');
+const savedList = document.getElementById('saved-list');
+const chartPie = document.getElementById('chart-pie');
+const chartLine = document.getElementById('chart-line');
+
+let CURRENT_REPORT = [];
+
+// populate station selects
+function populateStations(){
+  STATIONS.forEach(s=>{
+    const o=document.createElement('option'); o.value=s; o.textContent=s; filterFrom.appendChild(o);
+    const o2=document.createElement('option'); o2.value=s; o2.textContent=s; filterTo.appendChild(o2);
+  });
+  filterFrom.value = 'NDLS - New Delhi';
+  filterTo.value = 'MMCT - Mumbai Central';
+  const today = new Date();
+  dateStart.value = new Date(today.getFullYear(),today.getMonth(),today.getDate()-3).toISOString().slice(0,10);
+  dateEnd.value = today.toISOString().slice(0,10);
+}
+populateStations();
+
+// generate & render
+function generateReport(){
+  const from = filterFrom.value;
+  const to = filterTo.value;
+  const start = dateStart.value;
+  const end = dateEnd.value;
+  if(!from || !to || !start || !end){ alert('Please select all filters.'); return; }
+  if(from === to){ alert('From and To cannot be the same'); return; }
+  CURRENT_REPORT = genDemoData(from,to,start,end);
+  renderReport();
+  updateMetrics();
+  saveReportPreview();
+}
+
+function renderReport(filterQ){
+  reportTable.innerHTML = '';
+  const q = (filterQ || '').trim().toLowerCase();
+  let rows = CURRENT_REPORT;
+  if(q) rows = rows.filter(r=> (r.trainNumber+' '+r.trainName+' '+r.from+' '+r.to).toLowerCase().includes(q));
+  if(rows.length===0){ reportTable.innerHTML = '<tr><td colspan="8" class="small-muted">No entries for selected filters.</td></tr>'; entryCount.textContent='0'; return; }
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${r.trainNumber}</strong> ${r.trainName}</td>
+      <td class="small-muted">${r.from}</td>
+      <td class="small-muted">${r.to}</td>
+      <td><strong>${r.platform}</strong></td>
+      <td class="small-muted">${r.arrival}</td>
+      <td class="small-muted">${r.departure}</td>
+      <td>${r.delay}</td>
+      <td>${r.status}</td>
+    `;
+    reportTable.appendChild(tr);
+  });
+  entryCount.textContent = rows.length;
+  genTime.textContent = new Date().toLocaleString();
+  reportMeta.textContent = `${from} → ${to} • ${start} to ${end}`;
+  drawCharts(rows);
+}
+
+function updateMetrics(){
+  const total = CURRENT_REPORT.length;
+  const ontime = CURRENT_REPORT.filter(r=>r.status==='On Time').length;
+  const delayed = CURRENT_REPORT.filter(r=>r.status==='Delayed').length;
+  mTotal.textContent = total;
+  mOnTime.textContent = ontime;
+  mDelayed.textContent = delayed;
+}
+
+// CSV export
+function exportCSV(){
+  if(!CURRENT_REPORT || CURRENT_REPORT.length===0){ alert('No report to export'); return; }
+  const hdr = ['TrainNumber','TrainName','From','To','Platform','Arrival','Departure','Delay','Status','Date'];
+  const rows = [hdr.join(',')];
+  CURRENT_REPORT.forEach(r=>{
+    const row = [r.trainNumber, `"${r.trainName}"`, `"${r.from}"`, `"${r.to}"`, r.platform, r.arrival, r.departure, r.delay, r.status, r.date];
+    rows.push(row.join(','));
+  });
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `station-report-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+// print / pdf via window.print
+function printReport(){
+  window.print();
+}
+
+// preview modal
+function openPreview(){
+  if(!CURRENT_REPORT || CURRENT_REPORT.length===0){ alert('Generate a report first'); return; }
+  previewContent.innerHTML = '';
+  const h = document.createElement('div');
+  h.innerHTML = `<div style="padding:12px"><h3>${reportMeta.textContent}</h3><div class='small-muted'>Generated: ${genTime.textContent}</div></div>`;
+  previewContent.appendChild(h);
+  const tbl = document.createElement('table'); tbl.style.width='100%'; tbl.style.borderCollapse='collapse';
+  const thead = document.createElement('thead'); thead.innerHTML = `<tr style="background:#f6fbff"><th style="padding:8px">Train</th><th>From</th><th>To</th><th>Arrival</th><th>Departure</th><th>Delay</th><th>Status</th></tr>`;
+  tbl.appendChild(thead);
+  const tb = document.createElement('tbody');
+  CURRENT_REPORT.slice(0,200).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td style="padding:8px">${r.trainNumber} ${r.trainName}</td><td>${r.from}</td><td>${r.to}</td><td>${r.arrival}</td><td>${r.departure}</td><td>${r.delay}</td><td>${r.status}</td>`; tb.appendChild(tr); });
+  tbl.appendChild(tb); previewContent.appendChild(tbl);
+  modal.style.display='flex';
+}
+
+function closePreview(){ modal.style.display='none'; }
+
+// simple chart draw: pie (on-time vs delayed)
+function drawPie(ctx, onTimeCount, delayedCount){
+  const total = onTimeCount + delayedCount || 1;
+  const angleOn = (onTimeCount/total)*Math.PI*2;
+  ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+  const cx = ctx.canvas.width/2; const cy = ctx.canvas.height/2; const r = Math.min(cx,cy)-10;
+  // on-time
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle = '#1aa260'; ctx.arc(cx,cy,r,-Math.PI/2, -Math.PI/2 + angleOn); ctx.closePath(); ctx.fill();
+  // delayed
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle = '#e74c3c'; ctx.arc(cx,cy,r,-Math.PI/2 + angleOn, -Math.PI/2 + Math.PI*2); ctx.closePath(); ctx.fill();
+  // center
+  ctx.beginPath(); ctx.fillStyle='#fff'; ctx.arc(cx,cy, r*0.45,0,Math.PI*2); ctx.fill();
+  // legend
+  ctx.fillStyle='#000'; ctx.font='12px sans-serif'; ctx.fillText(`On Time: ${onTimeCount}`, 10, ctx.canvas.height - 30);
+  ctx.fillStyle='#000'; ctx.fillText(`Delayed: ${delayedCount}`, 10, ctx.canvas.height - 14);
+}
+
+// simple line chart: daily departures
+function drawLine(ctx, rows){
+  // aggregate by date
+  const agg = {};
+  rows.forEach(r=>{ agg[r.date] = (agg[r.date]||0)+1 });
+  const labels = Object.keys(agg).sort();
+  const values = labels.map(l=>agg[l]);
+  // draw background grid
+  ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+  const w = ctx.canvas.width; const h = ctx.canvas.height; const pad=36;
+  ctx.strokeStyle='#eef6ff'; ctx.beginPath(); for(let i=0;i<5;i++){ const y = pad + ((h-pad*2)/4)*i; ctx.moveTo(pad, y); ctx.lineTo(w-pad, y); } ctx.stroke();
+  // scale
+  const max = Math.max(...values, 1);
+  // draw polyline
+  ctx.beginPath(); ctx.strokeStyle = '#0055ff'; ctx.lineWidth=2; values.forEach((v,i)=>{ const x = pad + i*( (w-pad*2)/(Math.max(1,labels.length-1)) ); const y = h - pad - ( (h-pad*2) * (v/max) ); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+  // draw points
+  ctx.fillStyle='#0055ff'; values.forEach((v,i)=>{ const x = pad + i*( (w-pad*2)/(Math.max(1,labels.length-1)) ); const y = h - pad - ( (h-pad*2) * (v/max) ); ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); });
+  // x labels
+  ctx.fillStyle='#12364a'; ctx.font='12px sans-serif'; labels.forEach((l,i)=>{ const x = pad + i*( (w-pad*2)/(Math.max(1,labels.length-1)) ); ctx.fillText(l, x-18, h-8); });
+}
+
+function drawCharts(rows){
+  const on = rows.filter(r=>r.status==='On Time').length;
+  const del = rows.filter(r=>r.status==='Delayed').length;
+  const pieCtx = chartPie.getContext('2d');
+  drawPie(pieCtx,on,del);
+  const lineCtx = chartLine.getContext('2d');
+  drawLine(lineCtx, rows);
+}
+
+// save preview HTML to saved reports
+function saveReportPreview(){
+  const name = `Report ${new Date().toLocaleString()}`;
+  const data = {name, meta: reportMeta.textContent, generated: genTime.textContent, data: CURRENT_REPORT.slice(0,200)};
+  const saved = JSON.parse(localStorage.getItem('sm_reports')||'[]'); saved.unshift(data); if(saved.length>8) saved.pop(); localStorage.setItem('sm_reports', JSON.stringify(saved)); renderSaved();
+}
+function renderSaved(){ const saved = JSON.parse(localStorage.getItem('sm_reports')||'[]'); savedList.innerHTML=''; saved.forEach((s,i)=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center'; d.style.gap='8px'; d.innerHTML=`<div style="font-size:13px">${s.name}<div class='small-muted'>${s.meta}</div></div><div><button class='action-btn' data-i='${i}'>Load</button> <button class='action-btn' data-del='${i}'>Delete</button></div>`; savedList.appendChild(d); });}
+function loadSaved(i){ const saved=JSON.parse(localStorage.getItem('sm_reports')||'[]'); if(saved[i]){ CURRENT_REPORT = saved[i].data; renderReport(); updateMetrics(); log('Loaded saved report: '+saved[i].name); }}
+function deleteSaved(i){ const saved=JSON.parse(localStorage.getItem('sm_reports')||'[]'); saved.splice(i,1); localStorage.setItem('sm_reports',JSON.stringify(saved)); renderSaved(); }
+
+function log(m){ console.log('[REPORTS]',m); }
+
+// attach events
+generateBtn.addEventListener('click', generateReport);
+exportCsvBtn.addEventListener('click', exportCSV);
+printBtn.addEventListener('click', printReport);
+downloadPdf.addEventListener('click', ()=>{ window.print(); });
+previewBtn.addEventListener('click', openPreview);
+modalClose.addEventListener('click', closePreview);
+modalPrint.addEventListener('click', ()=>{ modal.style.display='none'; setTimeout(()=>window.print(),300); });
+
+// quick search
+searchQuick.addEventListener('input', ()=>{ renderReport(searchQuick.value); });
+
+// saved load/delete
+savedList.addEventListener('click', (e)=>{
+  const t = e.target; if(t.dataset.i) loadSaved(parseInt(t.dataset.i)); if(t.dataset.del) deleteSaved(parseInt(t.dataset.del));
+});
+
+// sample auto-generate on load
+(function init(){
+  renderSaved();
+  generateReport();
+})();
+
+</script>
+</body>
+</html>

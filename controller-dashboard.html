@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Section Controller Dashboard — Intelligent Decision Support</title>
+  <meta name="description" content="Realistic, attractive and dynamic Section Controller Dashboard with white & blue (#0000ff) color scheme.">
+  <style>
+    /* ------------------------------------------------------------
+       COLORS & THEME
+       Primary blue: #0000ff
+       Background: white and soft neutrals
+    -------------------------------------------------------------*/
+    :root{
+      --primary: #0000ff; /* user requested deep blue */
+      --primary-600: #0a00e6;
+      --accent: #1d4ed8;
+      --bg: #ffffff;
+      --panel: #f7f9ff;
+      --muted: #6b7280;
+      --glass: rgba(255,255,255,0.6);
+      --success: #16a34a;
+      --warn: #f59e0b;
+      --danger: #dc2626;
+      --shadow: 0 8px 30px rgba(10,10,40,0.06);
+      --radius: 12px;
+      --mono: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* Reset / base */
+    *{box-sizing: border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: var(--mono);
+      background: linear-gradient(180deg, #fbfdff 0%, #f2f6ff 100%);
+      color:#0b1220;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* ---------- Header ---------- */
+    header.app-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:18px 26px;
+      background: linear-gradient(90deg, rgba(0,0,255,0.95), rgba(29,78,216,0.85));
+      color:#fff;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+      position:sticky;
+      top:0;
+      z-index:1000;
+    }
+
+    .brand {
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+
+    .logo {
+      width:44px;
+      height:44px;
+      display:grid;
+      place-items:center;
+      background: #ffffff22;
+      border-radius:10px;
+      padding:6px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.12) inset;
+    }
+
+    .logo svg { width:28px; height:28px; fill:#fff; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+
+    .brand h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:0.2px;
+      font-weight:700;
+    }
+    .brand p{margin:0;font-size:12px;opacity:0.95}
+
+    .header-right{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .search {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background: rgba(255,255,255,0.12);
+      padding:8px 12px;
+      border-radius:10px;
+      backdrop-filter: blur(4px);
+    }
+
+    .search input{
+      border:none;
+      outline:none;
+      background:transparent;
+      color: #fff;
+      font-size:14px;
+      width:220px;
+    }
+
+    .chip {
+      background: rgba(255,255,255,0.12);
+      color:#fff;
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight:600;
+      font-size:13px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    /* ---------- Layout ---------- */
+    .wrap{
+      display:grid;
+      grid-template-columns: 320px 1fr 420px;
+      gap:20px;
+      padding:22px;
+      max-width:1400px;
+      margin: 18px auto;
+      align-items:start;
+    }
+
+    /* Left Sidebar - controls & stations list */
+    aside.sidebar {
+      background: linear-gradient(180deg, #fff, #f8fbff);
+      border-radius: var(--radius);
+      padding:16px;
+      box-shadow: var(--shadow);
+      min-height:400px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .sidebar h3{
+      margin:0 0 10px 0;
+      font-size:15px;
+      color:var(--primary);
+    }
+
+    .filter-group{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .filter-btn{
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid #e6eefc;
+      background: white;
+      cursor:pointer;
+      font-size:13px;
+      color:var(--primary-600);
+      box-shadow: 0 4px 8px rgba(13,37,150,0.02);
+    }
+
+    .station-list{
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height:58vh;
+      overflow:auto;
+      padding-right:6px;
+    }
+
+    .station-item{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px;
+      border-radius:10px;
+      background: linear-gradient(180deg, #fff, #f3f8ff);
+      border:1px solid #edf4ff;
+      cursor:pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .station-item:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(9,30,150,0.06); }
+    .station-item .meta{ display:flex; flex-direction:column; gap:3px; }
+    .station-item .meta .name{ font-weight:700; color:#04203a; }
+    .station-item .meta .sub{ font-size:12px; color:var(--muted); }
+
+    /* Middle - main panel */
+    main.panel {
+      background: linear-gradient(180deg,#ffffff, #fbfdff);
+      border-radius: var(--radius);
+      padding:18px;
+      box-shadow: var(--shadow);
+      min-height:400px;
+    }
+
+    .top-cards {
+      display:grid;
+      grid-template-columns: repeat(4,1fr);
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    .card {
+      padding:12px;
+      border-radius:10px;
+      background: linear-gradient(180deg,#fff,#f7faff);
+      border:1px solid #eef4ff;
+      box-shadow: 0 6px 18px rgba(10,24,80,0.04);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .kpi-title { font-size:13px; color:var(--muted); }
+    .kpi-value { font-size:20px; font-weight:800; color:#07103a; }
+
+    /* Train table + timeline */
+    .section-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .section-header h2{ margin:0; font-size:18px; color:var(--primary); }
+
+    .controls {
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    .btn {
+      padding:8px 12px;
+      border-radius:8px;
+      border:none;
+      font-weight:700;
+      cursor:pointer;
+      background:var(--primary);
+      color:white;
+      box-shadow: 0 6px 18px rgba(0,0,255,0.08);
+    }
+    .btn.secondary { background: #ffffff; color:var(--primary); border:1px solid #e6ecff; }
+
+    .table-wrap{
+      margin-top:12px;
+      overflow:auto;
+      border-radius:10px;
+      border:1px solid #eef5ff;
+    }
+
+    table.trains {
+      width:100%;
+      border-collapse:collapse;
+      min-width:920px;
+      font-size:13px;
+    }
+    table.trains th, table.trains td {
+      padding:12px 10px;
+      text-align:left;
+      border-bottom:1px solid #f1f6ff;
+    }
+    table.trains th {
+      background: linear-gradient(180deg,#f4f8ff,#eef6ff);
+      color: #05306b;
+      font-weight:700;
+      position:sticky;
+      top:0;
+      z-index:1;
+      font-size:13px;
+    }
+
+    .status-pill {
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+    .s-resolved { background:rgba(22,163,74,0.12); color:var(--success); border:1px solid rgba(22,163,74,0.12); }
+    .s-pending { background:rgba(245,158,11,0.08); color:var(--warn); }
+    .s-not { background:rgba(220,38,38,0.08); color:var(--danger); }
+
+    .action-link { color:var(--primary); text-decoration:underline; cursor:pointer; font-weight:700; }
+
+    /* Right panel - Recommendations + Timeline */
+    aside.rightpanel {
+      background: linear-gradient(180deg,#fff,#f9fbff);
+      border-radius: var(--radius);
+      padding:16px;
+      box-shadow: var(--shadow);
+      min-height:400px;
+      position:relative;
+    }
+
+    .rec-title { font-weight:800; color:var(--primary); margin-bottom:8px; }
+    .rec-list{ display:flex; flex-direction:column; gap:10px; max-height:64vh; overflow:auto; padding-right:6px; }
+
+    .rec-item{
+      background:#fff;
+      border-radius:10px;
+      padding:10px;
+      border:1px solid #eef4ff;
+      box-shadow: 0 8px 20px rgba(7,14,60,0.03);
+      transition: transform .14s ease;
+    }
+    .rec-item:hover { transform: translateY(-6px); }
+
+    .rec-item h4 { margin:0 0 6px 0; font-size:14px; color:#03203a; }
+    .rec-item p { margin:0; font-size:13px; color:var(--muted); }
+
+    /* Popup modal */
+    .overlay {
+      display:none;
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(3,6,20,0.45);
+      z-index:1200;
+      backdrop-filter: blur(2px);
+    }
+    .modal {
+      display:none;
+      position:fixed;
+      left:50%;
+      top:50%;
+      transform: translate(-50%,-50%);
+      width:760px;
+      max-width:95%;
+      background:white;
+      padding:18px;
+      border-radius:12px;
+      box-shadow:0 24px 60px rgba(6,10,40,0.18);
+      z-index:1300;
+    }
+
+    .modal.active, .overlay.active { display:block; }
+    .modal h3 { margin:0; color:var(--primary); }
+    .modal .content { margin-top:12px; color:var(--muted); font-size:14px; line-height:1.5; }
+
+    .small { font-size:12px; color:var(--muted); }
+
+    /* Tiny responsive */
+    @media (max-width:1150px){
+      .wrap{ grid-template-columns: 1fr; padding:12px; }
+      aside.rightpanel{ order:3; }
+      aside.sidebar{ order:1; }
+      main.panel{ order:2; }
+      .top-cards{ grid-template-columns: repeat(2,1fr); }
+      .brand h1{ font-size:16px; }
+      .search input{ width:120px; }
+    }
+
+    /* fancy animated gradient underline for titles */
+    .fancy-underline {
+      position:relative;
+      display:inline-block;
+    }
+    .fancy-underline::after{
+      content:'';
+      position:absolute;
+      left:0; bottom:-6px;
+      width:100%; height:6px;
+      border-radius:6px;
+      background: linear-gradient(90deg, rgba(0,0,255,0.08), rgba(29,78,216,0.12));
+    }
+
+    /* subtle animated pulse on active recommendation */
+    .pulse {
+      position:relative;
+    }
+    .pulse::after {
+      content:'';
+      position:absolute; inset:-6px;
+      border-radius:12px;
+      background: linear-gradient(90deg, rgba(0,0,255,0.06), transparent);
+      filter: blur(12px);
+      opacity:0;
+      transition: opacity 0.3s ease;
+    }
+    .pulse.active::after { opacity:1; }
+
+    /* timeline */
+    .timeline {
+      margin-top:12px;
+      border-radius:10px;
+      padding:12px;
+      background: linear-gradient(180deg,#ffffff,#f7fbff);
+      border:1px solid #eef5ff;
+    }
+    .timeline-item{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      padding:8px 6px;
+      border-bottom:1px dashed #f1f6ff;
+    }
+    .timeline-item:last-child{ border-bottom:none; }
+    .timeline-dot{ width:12px; height:12px; border-radius:50%; background:var(--primary); margin-top:6px; box-shadow:0 4px 16px rgba(0,0,255,0.08); }
+
+    /* tiny helpers */
+    .muted { color:var(--muted); font-size:13px; }
+    .right { margin-left:auto }
+    .text-center { text-align:center; }
+    .small-muted { font-size:12px; color:#8b95a6; }
+    .legend { display:flex; gap:10px; align-items:center; font-size:13px; color:var(--muted); }
+    .legend .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header" role="banner">
+    <div class="brand">
+      <div class="logo" aria-hidden>
+        <!-- simple track + signal icon -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+          <path d="M3 19h18v2H3z" opacity="0.12"></path>
+          <path d="M5 3h2v12H5zM11 3h2v12h-2zM17 3h2v12h-2z" fill="#fff"></path>
+          <path d="M9 7h6v2H9z" fill="#ffffff88"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>Section Controller Dashboard</h1>
+        <p class="small-muted">Intelligent Decision Support • White & Blue Theme</p>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="search" role="search" aria-label="Search trains">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="globalSearch" placeholder="Search train / platform / problem..." />
+      </div>
+      <div class="chip" id="kpiLive">⚡ Live: <strong style="margin-left:6px">Real-time Optimization</strong></div>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="wrap" role="main">
+
+    <!-- LEFT: Stations / Filters -->
+    <aside class="sidebar" aria-label="Stations and Filters">
+      <h3>Stations — Filters</h3>
+
+      <div class="filter-group" role="toolbar" aria-label="Filters">
+        <button class="filter-btn" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="resolved">Resolved</button>
+        <button class="filter-btn" data-filter="pending">Pending</button>
+        <button class="filter-btn" data-filter="not_resolved">Not Resolved</button>
+      </div>
+
+      <div style="margin-top:8px" class="small-muted">Station List</div>
+      <div class="station-list" id="stationList">
+        <!-- populated by JS -->
+      </div>
+
+      <div style="margin-top:14px; border-top:1px dashed #eef6ff; padding-top:12px;">
+        <div class="small-muted">Legend</div>
+        <div style="display:flex; gap:12px; margin-top:8px;">
+          <div class="legend"><span class="dot" style="background:var(--success)"></span> Resolved</div>
+          <div class="legend"><span class="dot" style="background:var(--warn)"></span> Pending</div>
+          <div class="legend"><span class="dot" style="background:var(--danger)"></span> Not Resolved</div>
+        </div>
+      </div>
+
+      <div style="position:absolute; bottom:16px; left:16px; right:16px; font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; justify-content:space-between;">
+        <div> <strong></strong></div>
+        <div id="localTime">--:--:--</div>
+      </div>
+    </aside>
+
+    <!-- MIDDLE: Tracks / Trains / Table -->
+    <main class="panel">
+      <div class="section-header">
+        <h2 class="fancy-underline">Live Section Overview</h2>
+        <div class="controls">
+          <button class="btn" id="autoOptimize">Run Optimize</button>
+          <button class="btn secondary" id="simulateDelay">Simulate Delay</button>
+          <div style="width:8px"></div>
+          <select id="stationSelect" style="padding:8px 12px;border-radius:8px;border:1px solid #e6eefc;background:white;font-weight:700;color:var(--primary);">
+            <!-- options by JS -->
+          </select>
+        </div>
+      </div>
+
+      <div class="top-cards">
+        <div class="card">
+          <div class="kpi-title">Throughput (trains/hr)</div>
+          <div class="kpi-value" id="kThroughput">42</div>
+          <div class="small-muted">Target: 48</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title">Avg Delay (min)</div>
+          <div class="kpi-value" id="kDelay">6</div>
+          <div class="small-muted">Lower is better</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title">Platform Utilization</div>
+          <div class="kpi-value" id="kPlatform">78%</div>
+          <div class="small-muted">Across selected section</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title">Recommendations</div>
+          <div class="kpi-value" id="kRec">3 Active</div>
+          <div class="small-muted">Quick actionable suggestions</div>
+        </div>
+      </div>
+
+      <div class="table-wrap" role="region" aria-label="Train table">
+        <table class="trains" id="trainTable" aria-describedby="tableDesc">
+          <caption id="tableDesc" style="caption-side:top; text-align:left; padding:10px 0; font-size:13px; color:var(--muted)">
+            Live trains in section • click <em>Resolved</em> to view solution, or <em>Send</em> to escalate.
+          </caption>
+          <thead>
+            <tr>
+              <th>Train</th>
+              <th>Type</th>
+              <th>Arrival</th>
+              <th>Departure</th>
+              <th>Platform</th>
+              <th>Problem</th>
+              <th>Status</th>
+              <th>ETA Impact</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="trainTbody">
+            <!-- rows generated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:14px; align-items:center;">
+        <div style="flex:1" class="timeline" aria-live="polite" id="eventTimeline">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>Recent Events</strong>
+            <div class="small-muted">Auto-updates every 6s</div>
+          </div>
+          <div id="timelineList" style="margin-top:8px">
+            <!-- timeline items -->
+          </div>
+        </div>
+
+        <div style="width:320px">
+          <div style="background:linear-gradient(180deg,#fff,#f7fbff); padding:12px; border-radius:10px; border:1px solid #eef5ff;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>Quick Map</strong>
+              <div class="small-muted">Topology</div>
+            </div>
+            <div style="margin-top:10px">
+              <!-- simple schematic -->
+              <svg width="100%" height="160" viewBox="0 0 500 160" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <defs>
+                  <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#0000ff" stop-opacity="0.14"/><stop offset="1" stop-color="#1d4ed8" stop-opacity="0.08"/></linearGradient>
+                </defs>
+                <rect x="6" y="10" rx="10" ry="10" width="488" height="80" fill="url(#g1)"></rect>
+                <!-- tracks -->
+                <g stroke="#0b1220" stroke-opacity="0.06" stroke-width="6" stroke-linecap="round">
+                  <path d="M20 70 L480 70" stroke="#c6d8ff"></path>
+                  <path d="M20 100 L480 100" stroke="#eaf1ff"></path>
+                </g>
+                <!-- stations -->
+                <g fill="#fff" stroke="#e6f0ff" stroke-width="1.6">
+                  <rect x="28" y="36" width="80" height="48" rx="8" fill="#fff"></rect>
+                  <rect x="186" y="36" width="120" height="48" rx="8" fill="#fff"></rect>
+                  <rect x="370" y="36" width="90" height="48" rx="8" fill="#fff"></rect>
+                </g>
+                <g font-size="12" fill="#06304a" font-weight="700">
+                  <text x="68" y="64" text-anchor="middle">Mumbai CST</text>
+                  <text x="246" y="64" text-anchor="middle">Pune Jn</text>
+                  <text x="415" y="64" text-anchor="middle">Lonavala</text>
+                </g>
+                <!-- moving train dot (animated via JS) -->
+                <circle id="trainDot" cx="60" cy="70" r="6" fill="#0000ff" stroke="#fff" stroke-width="2"></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- RIGHT: Recommendations / Controls -->
+    <aside class="rightpanel" aria-label="Recommendations and Actions">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div class="rec-title">Optimized Recommendations</div>
+          <div class="small-muted">System suggests conflict-free actions with explanation & priority</div>
+        </div>
+        <div style="font-size:12px; color:var(--muted)">Mode: <strong>Assist</strong></div>
+      </div>
+
+      <div class="rec-list" id="recList" style="margin-top:12px">
+        <!-- rec items by JS -->
+      </div>
+
+      <div style="margin-top:12px; border-top:1px dashed #eef5ff; padding-top:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn" id="ackAll">Acknowledge All</button>
+          <button class="btn secondary" id="exportLog">Export Log</button>
+        </div>
+
+        <div style="margin-top:12px; color:var(--muted); font-size:13px;">
+          <div><strong>Audit Trail</strong></div>
+          <div class="small-muted" style="margin-top:6px">All recommended and manual overrides are logged for compliance and learning.</div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Overlay + Modal -->
+  <div class="overlay" id="overlay"></div>
+  <div class="modal" id="modal">
+    <h3 id="modalTitle">Recommendation</h3>
+    <div class="content" id="modalContent"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px;">
+      <button class="btn secondary" onclick="closeModal()">Close</button>
+      <button class="btn" id="applyRecBtn">Apply</button>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------
+    // Sample Data & Utilities
+    // -------------------------
+    const now = ()=> new Date();
+    const formatTime = (d) => {
+      const dd = new Date(d);
+      return dd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    };
+    const stations = [
+      {
+        id: 'mumbai',
+        name: 'Mumbai CST',
+        platforms: 9,
+        trains: [
+          { id:'E101', name:'Express 101', type:'Express', arrival: addMin(-12), departure: addMin(3), platform:3, problem:'Signal failure', status:'resolved', solution:'Signal reset by technician', delay: 0 },
+          { id:'L303', name:'Local 303', type:'Local', arrival: addMin(35), departure: addMin(45), platform:2, problem:'Coach AC malfunction', status:'not_resolved', solution:'', delay: 8 },
+        ]
+      },
+      {
+        id: 'pune',
+        name: 'Pune Junction',
+        platforms: 6,
+        trains: [
+          { id:'S202', name:'Superfast 202', type:'Superfast', arrival: addMin(-8), departure: addMin(4), platform:1, problem:'No issues', status:'resolved', solution:'No action', delay: 0 },
+          { id:'P404', name:'Passenger 404', type:'Passenger', arrival: addMin(55), departure: addMin(68), platform:4, problem:'Water supply issue', status:'pending', solution:'Request sent to cleaning', delay: 5 },
+        ]
+      },
+      {
+        id: 'lonavala',
+        name: 'Lonavala',
+        platforms: 4,
+        trains: [
+          { id:'F777', name:'Freight 777', type:'Freight', arrival: addMin(18), departure: addMin(30), platform:2, problem:'Crew change', status:'pending', solution:'Crew requested', delay: 12 },
+          { id:'S111', name:'Shuttle 111', type:'Local', arrival: addMin(3), departure: addMin(9), platform:1, problem:'Door issue', status:'not_resolved', solution:'', delay: 6 },
+        ]
+      }
+    ];
+
+    // helper: adds minutes to now and returns ISO time
+    function addMin(min){
+      const d = new Date();
+      d.setMinutes(d.getMinutes() + min);
+      return d.toISOString();
+    }
+
+    // Global event log (audit trail)
+    let eventLog = [];
+
+    // -------------------------
+    // DOM References
+    // -------------------------
+    const stationListEl = document.getElementById('stationList');
+    const stationSelect = document.getElementById('stationSelect');
+    const trainTbody = document.getElementById('trainTbody');
+    const timelineList = document.getElementById('timelineList');
+    const recList = document.getElementById('recList');
+    const kThroughput = document.getElementById('kThroughput');
+    const kDelay = document.getElementById('kDelay');
+    const kPlatform = document.getElementById('kPlatform');
+    const kRec = document.getElementById('kRec');
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    const applyRecBtn = document.getElementById('applyRecBtn');
+
+    // Time display
+    const localTime = document.getElementById('localTime');
+    setInterval(()=> localTime.innerText = new Date().toLocaleTimeString(), 1000);
+    localTime.innerText = new Date().toLocaleTimeString();
+
+    // -------------------------
+    // Render functions
+    // -------------------------
+    function renderStationList(){
+      stationListEl.innerHTML = '';
+      stations.forEach(s=>{
+        const div = document.createElement('div');
+        div.className = 'station-item';
+        div.dataset.id = s.id;
+        div.innerHTML = `
+          <div class="meta">
+            <div class="name">${s.name}</div>
+            <div class="sub">${s.trains.length} active trains • ${s.platforms} platforms</div>
+          </div>
+          <div class="right small-muted">View</div>
+        `;
+        div.addEventListener('click', ()=> {
+          stationSelect.value = s.id;
+          renderTrains(s.id);
+        });
+        stationListEl.appendChild(div);
+
+        // add to select if not present
+        if (![...stationSelect.options].some(o=>o.value===s.id)){
+          const opt = document.createElement('option');
+          opt.value = s.id; opt.text = s.name;
+          stationSelect.appendChild(opt);
+        }
+      });
+    }
+
+    function renderTrains(stationId = stations[0].id){
+      const station = stations.find(x=>x.id===stationId);
+      if(!station) return;
+      trainTbody.innerHTML = '';
+      station.trains.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${t.id}</strong> <div class="small-muted">${t.name}</div></td>
+          <td>${t.type}</td>
+          <td>${formatTime(t.arrival)}</td>
+          <td>${formatTime(t.departure)}</td>
+          <td>${t.platform}</td>
+          <td>${t.problem || '—'}</td>
+          <td>${statusPill(t.status, t.solution)}</td>
+          <td>${t.delay ? `${t.delay} min` : '—'}</td>
+          <td>${actionCell(stationId, t.id, t.status)}</td>
+        `;
+        trainTbody.appendChild(tr);
+      });
+    }
+
+    function statusPill(status, solution){
+      if(status==='resolved') return `<span class="status-pill s-resolved" role="status">Resolved</span>`;
+      if(status==='pending') return `<span class="status-pill s-pending">Pending</span>`;
+      return `<span class="status-pill s-not">Not Resolved</span>`;
+    }
+
+    function actionCell(stationId, trainId, status){
+      if(status === 'not_resolved'){
+        return `<button class="btn" onclick="sendToDept('${stationId}','${trainId}')">Send</button>`;
+      }
+      if(status === 'pending'){
+        return `<span class="small-muted">Awaiting update</span>`;
+      }
+      return `<a class="action-link" href="javascript:void(0)" onclick="showSolution('${stationId}','${trainId}')">View</a>`;
+    }
+
+    function renderTimeline(){
+      timelineList.innerHTML = '';
+      const recent = [...eventLog].slice(-8).reverse();
+      recent.forEach(ev=>{
+        const div = document.createElement('div');
+        div.className = 'timeline-item';
+        div.innerHTML = `
+          <div class="timeline-dot" aria-hidden></div>
+          <div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <strong style="font-size:13px">${ev.title}</strong>
+              <div class="small-muted" style="margin-left:6px; font-size:12px">${ev.station}</div>
+            </div>
+            <div class="small-muted small" style="margin-top:6px">${ev.desc}</div>
+            <div class="small-muted" style="margin-top:6px;font-size:12px">${new Date(ev.time).toLocaleString()}</div>
+          </div>
+        `;
+        timelineList.appendChild(div);
+      });
+    }
+
+    function renderRecs(recommendations = []){
+      recList.innerHTML = '';
+      recommendations.forEach((r, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'rec-item pulse';
+        div.innerHTML = `
+          <h4>${r.title}</h4>
+          <p>${r.explain}</p>
+          <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+            <div class="small-muted">Priority: <strong>${r.priority}</strong></div>
+            <div class="right">
+              <button class="btn secondary" onclick="viewRec(${idx})">Details</button>
+              <button class="btn" onclick="applyRec(${idx})">Apply</button>
+            </div>
+          </div>
+        `;
+        recList.appendChild(div);
+      });
+      kRec.innerText = `${recommendations.length} Active`;
+    }
+
+    // -------------------------
+    // Simulated optimizer logic
+    // -------------------------
+    function computeRecommendations(stationId){
+      // small heuristic-based suggestions to simulate optimization
+      const station = stations.find(s=>s.id===stationId);
+      if(!station) return [];
+
+      const recs = [];
+
+      // 1. If multiple not_resolved or pending with high delays: suggest holding low priority trains
+      const highDelay = station.trains.filter(t=>t.delay >= 8);
+      if(highDelay.length){
+        recs.push({
+          title: 'Hold low-priority trains to clear mainline',
+          explain: `Hold ${highDelay.length} low-priority trains by 5-12 minutes near block sections to allow Superfast/Express to pass, reducing conflict and cumulative delay.`,
+          priority: 'High',
+          impacted: highDelay.map(t=>t.id)
+        });
+      }
+
+      // 2. If platform utilization > 80% suggest dynamic platform reallocation
+      const util = Math.round((station.trains.length / (station.platforms || 1)) * 100);
+      if(util > 80){
+        recs.push({
+          title: 'Dynamic platform reallocation',
+          explain: `Platform utilization is ${util}%. Recommend reallocating incoming local trains to alternative platforms and delaying non-critical departures.`,
+          priority: 'Medium'
+        });
+      }
+
+      // 3. If conflicting arrival windows: propose precedence swap
+      const soonArrivals = station.trains.filter(t => {
+        const diff = (new Date(t.arrival) - new Date())/60000;
+        return diff > -15 && diff < 30;
+      });
+      if(soonArrivals.length > 1){
+        recs.push({
+          title: 'Precedence swap for express',
+          explain: `Recommend giving precedence to Express/Superfast over Freight/Local in the next 15-25 min window to improve punctuality metrics.`,
+          priority: 'High'
+        });
+      }
+
+      // 4. Always one low-priority suggestion for controller awareness
+      recs.push({
+        title: 'Run diagnostic on signals',
+        explain: 'Run a quick diagnostic routine on signals at critical junctions (blocks A & B). Small anomalies detected historically here.',
+        priority: 'Low'
+      });
+
+      return recs;
+    }
+
+    // -------------------------
+    // Actions & Event logging
+    // -------------------------
+    function logEvent(title, station, desc){
+      const ev = { title, station, desc, time: new Date().toISOString() };
+      eventLog.push(ev);
+      renderTimeline();
+    }
+
+    function sendToDept(stationId, trainId){
+      const st = stations.find(s=>s.id===stationId);
+      const t = st.trains.find(tt=>tt.id===trainId);
+      if(!t) return;
+      t.status = 'pending';
+      t.solution = 'Request sent to maintenance department.';
+      logEvent('Escalated to Dept', st.name, `${trainId} -> ${t.problem}`);
+      renderTrains(stationId);
+      showToast(`Problem of ${trainId} at ${st.name} sent to department.`, 'info');
+      // update recommendations & KPIs
+      refreshKPIs();
+    }
+
+    function showSolution(stationId, trainId){
+      const st = stations.find(s=>s.id===stationId);
+      const t = st.trains.find(tt=>tt.id===trainId);
+      if(!t) return;
+      openModal(`${t.id} — Solution`, `<div>${t.solution || 'No solution provided yet.'}</div>`);
+    }
+
+    function openModal(title, html){
+      modalTitle.innerText = title;
+      modalContent.innerHTML = html;
+      overlay.classList.add('active');
+      modal.classList.add('active');
+    }
+
+    function closeModal(){
+      modal.classList.remove('active');
+      overlay.classList.remove('active');
+    }
+
+    function showToast(msg, type='info'){
+      // Simple transient toast (minimal)
+      const el = document.createElement('div');
+      el.style.position='fixed';
+      el.style.left='50%';
+      el.style.top='20px';
+      el.style.transform='translateX(-50%)';
+      el.style.background='white';
+      el.style.padding='10px 18px';
+      el.style.borderRadius='8px';
+      el.style.boxShadow='0 8px 30px rgba(0,0,0,0.12)';
+      el.style.zIndex=1500;
+      el.innerText = msg;
+      document.body.appendChild(el);
+      setTimeout(()=> el.style.opacity=0, 2200);
+      setTimeout(()=> el.remove(), 2600);
+    }
+
+    // Apply a recommendation (simulation)
+    function applyRec(idx){
+      const rec = currentRecs[idx];
+      if(!rec) return;
+      // simulated application: reduce delay on impacted trains or reduce throughput pressure
+      if(rec.impacted && rec.impacted.length){
+        rec.impacted.forEach(id=>{
+          stations.forEach(st=>{
+            const t = st.trains.find(x=>x.id===id);
+            if(t){ t.delay = Math.max(0, t.delay - 6); t.status = 'resolved'; t.solution = 'Adjusted by optimized hold; issue mitigated.'; }
+          });
+        });
+        logEvent('Applied Recommendation', 'System', rec.title);
+        renderTrains(stationSelect.value);
+        renderRecs(computeRecommendations(stationSelect.value));
+        refreshKPIs();
+        showToast('Recommendation applied.', 'success');
+        return;
+      }
+      // general application: mark as acknowledged
+      logEvent('Applied Recommendation', 'System', rec.title);
+      showToast('Recommendation applied.', 'success');
+    }
+
+    function viewRec(idx){
+      const rec = currentRecs[idx];
+      if(!rec) return;
+      openModal(rec.title, `<div><p class="small-muted">${rec.explain}</p><p style="margin-top:8px"><strong>Priority:</strong> ${rec.priority}</p></div>`);
+      applyRecBtn.onclick = ()=> { applyRec(idx); closeModal(); };
+    }
+
+    // Apply rec from right panel button event
+    function applyRecByIndex(i){
+      applyRec(i);
+    }
+
+    // -------------------------
+    // Optimizer / Simulation
+    // -------------------------
+    let currentRecs = [];
+
+    function runOptimize(){
+      const stId = stationSelect.value || stations[0].id;
+      logEvent('Optimizer Run', stations.find(s=>s.id===stId).name, 'Auto-optimization executed by system');
+      currentRecs = computeRecommendations(stId);
+      renderRecs(currentRecs);
+      showToast('Optimization complete — recommendations ready.', 'info');
+      refreshKPIs();
+      // highlight first rec
+      setTimeout(()=> {
+        const f = recList.querySelector('.rec-item');
+        if(f){ f.classList.add('active'); setTimeout(()=> f.classList.remove('active'), 2400); }
+      }, 240);
+    }
+
+    function simulateDelay(){
+      // randomly pick a train and increase delay
+      const allTrains = stations.flatMap(s => s.trains.map(t => ({...t, station: s.id})));
+      const candidate = allTrains[Math.floor(Math.random()*allTrains.length)];
+      const st = stations.find(s=>s.id===candidate.station);
+      const t = st.trains.find(x=>x.id===candidate.id);
+      t.delay += Math.floor(Math.random()*12)+4;
+      t.status = 'not_resolved';
+      t.solution = '';
+      logEvent('Delay Simulation', st.name, `${t.id} delay increased to ${t.delay} min`);
+      if(st.id === stationSelect.value) renderTrains(st.id);
+      renderRecs(computeRecommendations(stationSelect.value));
+      refreshKPIs();
+      showToast(`Simulated delay on ${t.id}`, 'warn');
+    }
+
+    // -------------------------
+    // KPI refresh (simple metrics)
+    // -------------------------
+    function refreshKPIs(){
+      // throughput estimated as trains per hour visible in current station
+      const st = stations.find(s=>s.id===stationSelect.value) || stations[0];
+      const trainsCount = st.trains.length;
+      const throughput = Math.max(12, Math.round(trainsCount * 6.5));
+      const avgDelay = Math.round((st.trains.reduce((a,b)=>a+(b.delay||0),0) / Math.max(1,st.trains.length)));
+      const platformUtil = Math.round((trainsCount / st.platforms) * 100);
+      kThroughput.innerText = throughput;
+      kDelay.innerText = avgDelay;
+      kPlatform.innerText = `${platformUtil}%`;
+      kRec.innerText = `${currentRecs.length} Active`;
+    }
+
+    // -------------------------
+    // UI wiring
+    // -------------------------
+    document.getElementById('autoOptimize').addEventListener('click', runOptimize);
+    document.getElementById('simulateDelay').addEventListener('click', simulateDelay);
+    document.getElementById('ackAll').addEventListener('click', ()=> {
+      logEvent('Acknowledged All', 'Controller', 'Controller acknowledged all recommendations.');
+      currentRecs = [];
+      renderRecs(currentRecs);
+      refreshKPIs();
+      showToast('All recommendations acknowledged', 'info');
+    });
+    document.getElementById('exportLog').addEventListener('click', ()=> {
+      const blob = new Blob([JSON.stringify(eventLog, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'audit_log.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    stationSelect.addEventListener('change', ()=> {
+      renderTrains(stationSelect.value);
+      currentRecs = computeRecommendations(stationSelect.value);
+      renderRecs(currentRecs);
+      refreshKPIs();
+    });
+
+    // Search box
+    document.getElementById('globalSearch').addEventListener('input', (e)=>{
+      const q = e.target.value.trim().toLowerCase();
+      if(!q) { renderTrains(stationSelect.value); return; }
+      // filter displayed trains in current station only
+      const st = stations.find(s=>s.id===stationSelect.value) || stations[0];
+      const filtered = st.trains.filter(t=> (t.id+t.name+t.problem+(t.type||'')).toLowerCase().includes(q));
+      trainTbody.innerHTML = '';
+      filtered.forEach(t=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${t.id}</strong> <div class="small-muted">${t.name}</div></td>
+          <td>${t.type}</td>
+          <td>${formatTime(t.arrival)}</td>
+          <td>${formatTime(t.departure)}</td>
+          <td>${t.platform}</td>
+          <td>${t.problem || '—'}</td>
+          <td>${statusPill(t.status, t.solution)}</td>
+          <td>${t.delay ? `${t.delay} min` : '—'}</td>
+          <td>${actionCell(st.id, t.id, t.status)}</td>
+        `;
+        trainTbody.appendChild(tr);
+      });
+    });
+
+    // filter buttons left
+    document.querySelectorAll('.filter-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const mode = btn.dataset.filter;
+        const st = stations.find(s=>s.id===stationSelect.value) || stations[0];
+        if(mode === 'all'){ renderTrains(st.id); return; }
+        const filtered = st.trains.filter(t => t.status === mode);
+        trainTbody.innerHTML = '';
+        filtered.forEach(t=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${t.id}</strong> <div class="small-muted">${t.name}</div></td>
+            <td>${t.type}</td>
+            <td>${formatTime(t.arrival)}</td>
+            <td>${formatTime(t.departure)}</td>
+            <td>${t.platform}</td>
+            <td>${t.problem || '—'}</td>
+            <td>${statusPill(t.status, t.solution)}</td>
+            <td>${t.delay ? `${t.delay} min` : '—'}</td>
+            <td>${actionCell(st.id, t.id, t.status)}</td>
+          `;
+          trainTbody.appendChild(tr);
+        });
+      });
+    });
+
+    // small moving train on map animation
+    let mapPos = 60;
+    setInterval(()=>{
+      mapPos += 8;
+      if(mapPos > 440) mapPos = 60;
+      const dot = document.getElementById('trainDot');
+      if(dot) dot.setAttribute('cx', mapPos);
+    }, 700);
+
+    // auto-refresh simulate real-time updates
+    setInterval(()=>{
+      // randomly adjust small delays up/down
+      stations.forEach(s=>{
+        s.trains.forEach(t=>{
+          if(Math.random() < 0.12){
+            t.delay = Math.max(0, t.delay + (Math.random() > 0.6 ? 2 : -1));
+            if(t.delay <= 0 && t.status !== 'resolved'){ t.status = 'resolved'; t.solution = 'Auto-corrected by system.'; }
+            logEvent('Status Update', s.name, `${t.id} delay updated to ${t.delay} min`);
+          }
+        });
+      });
+      renderTrains(stationSelect.value);
+      currentRecs = computeRecommendations(stationSelect.value);
+      renderRecs(currentRecs);
+      refreshKPIs();
+    }, 6000);
+
+    // initial render
+    renderStationList();
+    stationSelect.value = stations[0].id;
+    renderTrains(stations[0].id);
+    currentRecs = computeRecommendations(stations[0].id);
+    renderRecs(currentRecs);
+    refreshKPIs();
+
+    // convenience: expose some functions for inline onclick usage
+    window.sendToDept = sendToDept;
+    window.showSolution = showSolution;
+    window.applyRec = applyRec;
+    window.viewRec = viewRec;
+
+    // small initial events
+    logEvent('System Ready', 'Central Division', 'Dashboard initialized and connected to data feeds.');
+    logEvent('Data Sync', 'All Stations', 'Timetables and rolling stock statuses loaded.');
+  </script>
+</body>
+</html>
